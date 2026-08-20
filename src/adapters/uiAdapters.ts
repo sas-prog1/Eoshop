@@ -7,6 +7,7 @@ import { workspaceApi } from "../services/workspaceApi";
 import { catalogApi } from "../services/catalogApi";
 import { inventoryApi } from "../services/inventoryApi";
 import { orderApi } from "../services/orderApi";
+import { storeAssetApi } from "../services/storeAssetApi";
 
 export type {
   PlatformStore,
@@ -19,6 +20,7 @@ export type { StorePlan } from "../services/plansApi";
 export type { StoreDraft, StoreDraftInput, StoreSubmission, StoreSubmissionInput } from "../services/provisioningApi";
 export type { StoreWorkspace } from "../services/workspaceApi";
 export type { CatalogSnapshot } from "../services/catalogApi";
+export type { StoreAssetUpload } from "../services/storeAssetApi";
 export type { CreateOrderInput, OrderReceipt, StorefrontBootstrap } from "../services/orderApi";
 export {
   UiAdapterError,
@@ -60,6 +62,7 @@ export interface UiAdapters {
   catalog: typeof catalogApi;
   inventory: typeof inventoryApi;
   orders: typeof orderApi;
+  storeAssets: typeof storeAssetApi;
 }
 
 export const productionUiAdapters: UiAdapters = {
@@ -86,4 +89,5 @@ export const productionUiAdapters: UiAdapters = {
   catalog: catalogApi,
   inventory: inventoryApi,
   orders: orderApi,
+  storeAssets: storeAssetApi,
 };

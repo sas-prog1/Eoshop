@@ -53,7 +53,17 @@ export class LatestWorkspaceLoad {
 }
 
 export function tenantSafeConfig(localDraft: StoreConfig | null): StoreConfig {
-  return localDraft ?? ELEGANT_PRESET;
+  return scrubUnsafeVisualUrls(localDraft ?? ELEGANT_PRESET);
+}
+
+export function scrubUnsafeVisualUrls(config: StoreConfig): StoreConfig {
+  const safe = structuredClone(config);
+  for (const key of ["logoUrl", "heroBannerImage", "aboutImage"] as const) {
+    const value = safe[key];
+    if (typeof value === "string" && /^(?:data|blob):/i.test(value.trim())) safe[key] = "";
+  }
+
+  return safe;
 }
 
 export function classifyMerchantRestore(storeCount: number, failed = false): MerchantRestoreResult {

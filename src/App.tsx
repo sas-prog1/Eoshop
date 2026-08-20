@@ -244,7 +244,7 @@ export default function App() {
     const saved = localStorage.getItem("mobtaker_custom_store");
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = tenantSafeConfig(JSON.parse(saved) as StoreConfig);
         const basePreset = parsed.themeStyle === "tech" ? TECH_PRESET : ELEGANT_PRESET;
         setConfig({
           ...basePreset,
@@ -252,7 +252,7 @@ export default function App() {
           heroBannerImage: parsed.heroBannerImage || basePreset.heroBannerImage,
           showHeroBanner: parsed.showHeroBanner !== false
         });
-        setLocalDraft(parsed as StoreConfig);
+        setLocalDraft(parsed);
       } catch (e) {
         console.error("Error loading saved config", e);
       }
@@ -306,7 +306,7 @@ export default function App() {
           const requestedStore = outcome.stores.find((store) => store.id === initialRoute.tenantId) ?? null;
           const requiredCapabilities = requestedStore?.capabilities.workspaceManage;
           if (builderSections.includes(initialRoute.section) && outcome.loadedTenantId === initialRoute.tenantId && requiredCapabilities) {
-            setActiveTab(initialRoute.section === "products" ? "products" : initialRoute.section);
+            setActiveTab(initialRoute.section === "design" ? "branding" : initialRoute.section === "products" ? "products" : initialRoute.section);
             setView("builder");
             replaceCentralPath(merchantStorePath(initialRoute.tenantId, initialRoute.section));
             return;
@@ -410,7 +410,7 @@ export default function App() {
     setPendingArchivedProductIds([]);
     setActiveWorkspace(null);
     setActiveDraft(draft);
-    setConfig(draft ? draft.config as unknown as StoreConfig : ELEGANT_PRESET);
+    setConfig(draft ? tenantSafeConfig(draft.config as unknown as StoreConfig) : ELEGANT_PRESET);
     setCart([]);
     if (user && draft) {
       setRegisteredUser({
@@ -1243,7 +1243,7 @@ export default function App() {
       const loaded = activeWorkspace?.tenantId === store.id || await loadMerchantWorkspace(store, authUser);
       if (!loaded) return;
       setActiveDraft(null);
-      setActiveTab(section === "products" ? "products" : section);
+      setActiveTab(section === "design" ? "branding" : section === "products" ? "products" : section);
       setMerchantStoreRoute({ tenantId: store.id, section });
       setView("builder");
       pushCentralPath(merchantStorePath(store.id, section));
@@ -2157,6 +2157,15 @@ export default function App() {
               <aside className="w-full lg:w-[460px] h-[50vh] lg:h-full flex flex-col border-l border-slate-200 bg-white shrink-0 animate-fadeIn min-h-0 overflow-hidden shadow-xs">
                 {/* Tab navigation headers with mobile touch scroll */}
                 <div className="flex items-center overflow-x-auto border-b border-slate-200 shrink-0 bg-slate-50/80 text-xs divide-x divide-x-reverse divide-slate-200/80 scrollbar-none touch-pan-x">
+                  {activeWorkspace && merchantStoreRoute?.section === "design" ? (
+                    <div className="flex min-h-[48px] w-full items-center justify-between gap-3 bg-white px-4 py-3">
+                      <div>
+                        <p className="text-sm font-black text-slate-900">ملف المتجر والهوية</p>
+                        <p className="mt-0.5 text-[10px] font-bold text-slate-500">عدّل البيانات والمظهر ثم احفظ التغييرات من الأعلى.</p>
+                      </div>
+                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-700">متصل بالخادم</span>
+                    </div>
+                  ) : (<>
                   <button
                     onClick={() => setActiveTab("branding")}
                     className={`py-3.5 px-4 min-h-[44px] font-extrabold text-center border-b-2 transition shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 touch-manipulation cursor-pointer active:scale-[0.98] ${
@@ -2214,6 +2223,7 @@ export default function App() {
                   >
                     <span>طلب اعتماد ونشر المتجر 🚀</span>
                   </button>
+                  </>)}
                 </div>
 
                 {/* Render dynamic ControlPanel with states - Independent Scrolling */}

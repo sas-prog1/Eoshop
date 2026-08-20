@@ -122,14 +122,31 @@ function appAdapters(save: UiAdapters["workspace"]["save"]): UiAdapters {
       load: vi.fn().mockResolvedValue(workspace),
       save,
     },
+    catalog: {
+      load: vi.fn().mockResolvedValue({
+        tenantId: submission.id,
+        revision: workspace.catalogRevision,
+        currencyCode: workspace.config.currency,
+        products: workspace.config.products,
+      }),
+    },
   });
 }
 
-async function openRestoredBuilder(adapters: UiAdapters, user: ReturnType<typeof userEvent.setup>) {
+async function openRestoredBuilder(
+  adapters: UiAdapters,
+  user: ReturnType<typeof userEvent.setup>,
+  section: "design" | "products" = "design",
+) {
   renderInterface(<App />, adapters);
   expect(await screen.findByRole("heading", { name: /مرحبًا تاجر/ })).toBeTruthy();
   await user.click(screen.getByRole("button", { name: "فتح مركز المتجر" }));
-  await user.click(await screen.findByRole("button", { name: "التصميم والهوية" }));
+  if (section === "products") {
+    await user.click((await screen.findAllByRole("button", { name: "المنتجات" }))[0]);
+    await user.click(await screen.findByRole("button", { name: "إضافة وتعديل المنتجات" }));
+  } else {
+    await user.click(await screen.findByRole("button", { name: "التصميم والهوية" }));
+  }
   expect(await screen.findByRole("button", { name: "حفظ التعديلات" })).toBeTruthy();
 }
 
@@ -403,8 +420,7 @@ describe("adapter-backed interface flows", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
     const user = userEvent.setup();
     await openRestoredBuilder(appAdapters(vi.fn()), user);
-    await user.click(screen.getByRole("button", { name: "الاسم والشعار" }));
-    fireEvent.change(screen.getByPlaceholderText("أدخل اسم متجرك المميز"), { target: { value: "تعديل عبر السجل" } });
+    fireEvent.change(screen.getByLabelText("اسم المتجر"), { target: { value: "تعديل عبر السجل" } });
 
     window.history.pushState({}, "", `/app/stores/${submission.id}`);
     window.dispatchEvent(new PopStateEvent("popstate"));
@@ -434,8 +450,7 @@ describe("adapter-backed interface flows", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
     const user = userEvent.setup();
     await openRestoredBuilder(appAdapters(vi.fn()), user);
-    await user.click(screen.getByRole("button", { name: "الاسم والشعار" }));
-    fireEvent.change(screen.getByPlaceholderText("أدخل اسم متجرك المميز"), { target: { value: "اسم غير محفوظ" } });
+    fireEvent.change(screen.getByLabelText("اسم المتجر"), { target: { value: "اسم غير محفوظ" } });
 
     await user.click(screen.getByTitle("الرجوع إلى بوابة التاجر"));
     expect(confirm).toHaveBeenCalledTimes(1);
@@ -761,8 +776,7 @@ describe("adapter-backed interface flows", () => {
       config,
     }));
     const user = userEvent.setup();
-    await openRestoredBuilder(appAdapters(save), user);
-    await user.click(screen.getByTestId("products-tab"));
+    await openRestoredBuilder(appAdapters(save), user, "products");
     const product = workspace.config.products[0];
     const productCard = screen.getAllByText(product.name)[0].closest("article");
     fireEvent.click(productCard?.querySelector("button") as HTMLButtonElement);
@@ -784,8 +798,7 @@ describe("adapter-backed interface flows", () => {
       config,
     }));
     const user = userEvent.setup();
-    await openRestoredBuilder(appAdapters(save), user);
-    await user.click(screen.getByTestId("products-tab"));
+    await openRestoredBuilder(appAdapters(save), user, "products");
     await user.click(screen.getByRole("button", { name: "إضافة منتج" }));
     await user.click(screen.getByRole("button", { name: "إضافة منتج" }));
     await user.click(screen.getByTestId("save-workspace"));
@@ -817,8 +830,7 @@ describe("adapter-backed interface flows", () => {
     const adapters = appAdapters(save);
     adapters.workspace.load = vi.fn().mockResolvedValue(persistedWorkspace);
     const user = userEvent.setup();
-    await openRestoredBuilder(adapters, user);
-    await user.click(screen.getByTestId("products-tab"));
+    await openRestoredBuilder(adapters, user, "products");
     await user.click(screen.getByRole("button", { name: /منتج قابل للأرشفة/ }));
     await user.click(screen.getByRole("button", { name: "أرشفة المنتج عند الحفظ" }));
     await user.click(screen.getByRole("button", { name: "تأكيد" }));
@@ -838,8 +850,7 @@ describe("adapter-backed interface flows", () => {
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(true);
     const user = userEvent.setup();
-    await openRestoredBuilder(appAdapters(vi.fn()), user);
-    await user.click(screen.getByTestId("products-tab"));
+    await openRestoredBuilder(appAdapters(vi.fn()), user, "products");
     expect(screen.queryByTestId("inventory-tab")).toBeNull();
     expect(screen.queryByRole("button", { name: "الطلبات" })).toBeNull();
 
@@ -847,7 +858,7 @@ describe("adapter-backed interface flows", () => {
     await user.click(screen.getAllByRole("button", { name: new RegExp(product.name) })[0]);
     fireEvent.change(screen.getByLabelText("اسم المنتج"), { target: { value: "تعديل غير محفوظ" } });
     await user.click(screen.getByRole("button", { name: /فتح المخزون/ }));
-    expect(window.location.pathname).toContain("/design");
+    expect(window.location.pathname).toBe(`/app/stores/${submission.id}/products`);
 
     await user.click(screen.getByRole("button", { name: /فتح المخزون/ }));
     await waitFor(() => expect(window.location.pathname).toBe(`/app/stores/${submission.id}/inventory`));

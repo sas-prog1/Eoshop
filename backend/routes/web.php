@@ -10,12 +10,14 @@ use App\Http\Controllers\MerchantCatalogMediaController;
 use App\Http\Controllers\MerchantInventoryController;
 use App\Http\Controllers\MerchantOrderController;
 use App\Http\Controllers\MerchantProductCatalogController;
+use App\Http\Controllers\MerchantStoreAssetController;
 use App\Http\Controllers\MerchantStoreController;
 use App\Http\Controllers\MerchantStoreDraftController;
 use App\Http\Controllers\MerchantStoreLifecycleController;
 use App\Http\Controllers\MerchantWorkspaceController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PlatformController;
+use App\Http\Controllers\StoreAssetController;
 use App\Http\Controllers\StoreGeneratorController;
 use App\Http\Controllers\StoreSubmissionController;
 use App\Models\AdminAuditLog;
@@ -34,6 +36,10 @@ Route::middleware('known.domain')->prefix('api/auth')->group(function (): void {
 Route::get('/api/catalog-media/{tenant}/{media}', [CatalogMediaController::class, 'show'])
     ->middleware('known.domain')
     ->whereUuid('media');
+
+Route::get('/api/store-assets/{tenant}/{asset}', [StoreAssetController::class, 'show'])
+    ->middleware('known.domain')
+    ->whereUuid('asset');
 
 Route::middleware('central.domain')->group(function (): void {
     Route::get('/api/plans', [PlanController::class, 'index']);
@@ -93,6 +99,9 @@ Route::middleware('central.domain')->group(function (): void {
             ->can('viewMerchant', 'tenant');
         Route::patch('/merchant/stores/{tenant}/workspace', [MerchantWorkspaceController::class, 'update'])
             ->can('updateStoreWorkspace', 'tenant')
+            ->middleware('throttle:merchant.mutations');
+        Route::post('/merchant/stores/{tenant}/assets', [MerchantStoreAssetController::class, 'store'])
+            ->can('updateStoreConfig', 'tenant')
             ->middleware('throttle:merchant.mutations');
         Route::get('/merchant/stores/{tenant}/catalog', [MerchantProductCatalogController::class, 'show'])
             ->can('viewMerchant', 'tenant');

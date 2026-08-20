@@ -19,7 +19,10 @@ use Illuminate\Support\Facades\DB;
 
 class StoreWorkspaceService
 {
-    public function __construct(private readonly ProductCatalogService $catalogs) {}
+    public function __construct(
+        private readonly ProductCatalogService $catalogs,
+        private readonly StoreAssetService $assets,
+    ) {}
 
     /** @return array{tenantId: string, revision: int, catalogRevision: int, config: array<string, mixed>, updatedAt: ?string} */
     public function read(Tenant $tenant, User $actor): array
@@ -88,6 +91,9 @@ class StoreWorkspaceService
                         );
                     }
 
+                    $currentFullConfig = json_decode((string) $record->config_json, true, 512, JSON_THROW_ON_ERROR);
+                    $this->assets->syncReferences($lockedTenant, $currentFullConfig, $payload['config']);
+
                     $catalog = $this->catalogs->mutate($lockedTenant, [
                         'catalogRevision' => $payload['catalogRevision'],
                         'currencyCode' => $payload['config']['currency'],
@@ -95,8 +101,7 @@ class StoreWorkspaceService
                         'archiveProductIds' => $payload['archiveProductIds'] ?? [],
                     ], $limit, false, true);
                     $storedConfig = Arr::except($payload['config'], ['products', 'currency']);
-                    $currentConfig = json_decode((string) $record->config_json, true, 512, JSON_THROW_ON_ERROR);
-                    $currentConfig = Arr::except($currentConfig, ['products', 'currency']);
+                    $currentConfig = Arr::except($currentFullConfig, ['products', 'currency']);
                     $workspaceChanged = $currentConfig !== $storedConfig || ! (bool) $record->products_materialized;
                     if ($workspaceChanged) {
                         DB::table('store_configs')->where('id', $record->id)->update([

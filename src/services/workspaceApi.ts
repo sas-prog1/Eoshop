@@ -151,6 +151,9 @@ export function mapStoreConfig(value: unknown): StoreConfig {
   if (dto.heroBannerHeight !== undefined && dto.heroBannerHeight !== null) config.heroBannerHeight = enumField(dto, "heroBannerHeight", ["compact", "medium", "large"] as const, "إعدادات مساحة العمل");
   if (dto.customWallets !== undefined && dto.customWallets !== null) config.customWallets = arrayField(dto, "customWallets", "إعدادات مساحة العمل").map(mapWallet);
   if (dto.customCoupons !== undefined && dto.customCoupons !== null) config.customCoupons = arrayField(dto, "customCoupons", "إعدادات مساحة العمل").map(mapCoupon);
+  for (const key of ["logoUrl", "heroBannerImage", "aboutImage"] as const) {
+    if (/^(?:data|blob):/i.test(config[key] ?? "")) config[key] = "";
+  }
 
   return config;
 }

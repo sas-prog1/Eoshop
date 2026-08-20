@@ -20,7 +20,7 @@ Eoshop has a server-authoritative commerce core and a repeatable local Pilot. Hu
 
 ## Active
 
-- No implementation WP is active while the next Phase 5 boundary is defined from the retained builder and platform-console debt.
+- WP 5.8: focused store profile and appearance editing with tenant-isolated managed logo/hero assets and no second workspace writer.
 
 ## Approved next sequence
 

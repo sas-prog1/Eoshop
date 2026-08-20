@@ -56,6 +56,7 @@ final class TenantWorkspaceReadiness
         ])
             && Schema::hasTable('catalog_settings')
             && Schema::hasTable('product_media')
+            && StoreAssetSchema::ready()
             && Schema::hasTable('inventory_operations')
             && Schema::hasTable('inventory_movements')
             && Schema::hasTable('inventory_reservations')

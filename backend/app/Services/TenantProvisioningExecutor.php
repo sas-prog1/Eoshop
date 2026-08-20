@@ -8,6 +8,7 @@ use App\Models\PublicationRequest;
 use App\Models\StoreSubmission;
 use App\Models\Tenant;
 use App\Models\TenantSubscription;
+use App\Support\StoreAssetSchema;
 use App\Support\StoreWorkspaceContract;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +78,7 @@ class TenantProvisioningExecutor
             && Schema::hasTable('products')
             && Schema::hasTable('catalog_settings')
             && Schema::hasTable('product_media')
+            && StoreAssetSchema::ready()
             && DB::table('catalog_settings')->where('id', 1)->count() === 1
             && DB::table('store_configs')
                 ->where('id', $submission->getAttribute('initial_config_id'))

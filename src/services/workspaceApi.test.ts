@@ -48,6 +48,9 @@ describe("workspaceApi", () => {
         databasePassword: "must-not-escape",
         config: {
           ...config,
+          logoUrl: "data:image/png;base64,legacy",
+          heroBannerImage: "blob:http://localhost/legacy",
+          aboutImage: "data:image/png;base64,legacy-about",
           products: [{ ...config.products[0], id: "11111111-1111-4111-8111-111111111111", price: "12.50", internalCost: "secret" }],
           databasePassword: "must-not-escape",
         },
@@ -62,6 +65,9 @@ describe("workspaceApi", () => {
     expect(workspace).not.toHaveProperty("databasePassword");
     expect(workspace.config).not.toHaveProperty("databasePassword");
     expect(workspace.config.products[0]).not.toHaveProperty("internalCost");
+    expect(workspace.config.logoUrl).toBe("");
+    expect(workspace.config.heroBannerImage).toBe("");
+    expect(workspace.config.aboutImage).toBe("");
   });
 
   it("omits draft identifiers and sends the current revision through the CSRF client", async () => {

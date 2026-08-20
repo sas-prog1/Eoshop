@@ -58,6 +58,21 @@ describe("merchant workspace account and request isolation", () => {
     expect(tenantSafeConfig(null)).not.toEqual(previousTenantConfig);
   });
 
+  it("scrubs legacy browser-only visual URLs before a draft can re-enter the editor", () => {
+    const unsafe = {
+      ...ELEGANT_PRESET,
+      logoUrl: "data:image/png;base64,private-logo",
+      heroBannerImage: "blob:http://localhost/private-hero",
+      aboutImage: "data:image/png;base64,private-about",
+    } as StoreConfig;
+
+    const safe = tenantSafeConfig(unsafe);
+    expect(safe.logoUrl).toBe("");
+    expect(safe.heroBannerImage).toBe("");
+    expect(safe.aboutImage).toBe("");
+    expect(unsafe.logoUrl).toContain("private-logo");
+  });
+
   it("classifies restore, dirty switching, logout, and AI save outcomes fail closed", () => {
     expect(classifyMerchantRestore(1)).toBe("loaded");
     expect(classifyMerchantRestore(0)).toBe("none");

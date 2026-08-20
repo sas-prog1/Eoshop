@@ -2,9 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Tenant;
 use App\Support\CheckoutPolicyContract;
 use App\Support\ProductCatalogContract;
+use App\Support\StoreAssetPath;
+use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 use JsonException;
@@ -30,13 +34,14 @@ class UpdateStoreWorkspaceRequest extends FormRequest
     ];
 
     /** @return array<string, list<mixed>> */
-    public static function contractRules(): array
+    public static function contractRules(?string $managedTenantId = null): array
     {
         $shortText = ['nullable', 'string', 'max:255'];
         $longText = ['nullable', 'string', 'max:5000'];
         $money = ['nullable', 'numeric', 'min:0', 'max:999999999.99'];
         $boolean = ['nullable', 'boolean'];
-        $httpUrl = ['nullable', 'url:https', 'max:2048'];
+        $httpUrl = self::appearanceUrlRules(null);
+        $managedAppearanceUrl = self::appearanceUrlRules($managedTenantId);
 
         return [
             'revision' => ['required', 'integer', 'min:1'],
@@ -47,7 +52,7 @@ class UpdateStoreWorkspaceRequest extends FormRequest
             'config.storeName' => ['required', 'string', 'max:255'],
             'config.slogan' => ['required', 'string', 'max:500'],
             'config.logoIcon' => ['required', 'string', 'max:32'],
-            'config.logoUrl' => $httpUrl,
+            'config.logoUrl' => $managedAppearanceUrl,
             'config.logoType' => ['nullable', Rule::in(['icon', 'image'])],
             'config.logoSize' => ['nullable', 'integer', 'min:16', 'max:512'],
             'config.primaryColor' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
@@ -74,7 +79,7 @@ class UpdateStoreWorkspaceRequest extends FormRequest
             'config.tiktok' => $shortText,
             'config.snapchat' => $shortText,
             'config.showHeroBanner' => $boolean,
-            'config.heroBannerImage' => $httpUrl,
+            'config.heroBannerImage' => $managedAppearanceUrl,
             'config.heroBannerTitle' => ['nullable', 'string', 'max:500'],
             'config.heroBannerSubtitle' => ['nullable', 'string', 'max:1000'],
             'config.heroBannerBadge' => $shortText,
@@ -153,7 +158,21 @@ class UpdateStoreWorkspaceRequest extends FormRequest
     /** @return array<string, list<mixed>> */
     public function rules(): array
     {
-        return self::contractRules();
+        $tenant = $this->route('tenant');
+
+        return self::contractRules($tenant instanceof Tenant ? (string) $tenant->getKey() : null);
+    }
+
+    protected function failedValidation(ValidatorContract $validator): void
+    {
+        $assetFields = ['config.logoUrl', 'config.heroBannerImage'];
+        $assetError = collect($assetFields)->contains(fn (string $field): bool => $validator->errors()->has($field));
+
+        throw new HttpResponseException(response()->json([
+            'message' => 'The submitted workspace is invalid.',
+            'code' => $assetError ? 'workspace_asset_path_invalid' : 'workspace_validation_failed',
+            'errors' => $validator->errors(),
+        ], 422));
     }
 
     /** @return list<callable(Validator): void> */
@@ -199,5 +218,20 @@ class UpdateStoreWorkspaceRequest extends FormRequest
             CheckoutPolicyContract::appendErrors($validator, (array) $this->input('config', []));
 
         }];
+    }
+
+    /** @return list<mixed> */
+    private static function appearanceUrlRules(?string $managedTenantId): array
+    {
+        return [
+            'nullable',
+            'string',
+            'max:2048',
+            static function (string $attribute, mixed $value, \Closure $fail) use ($managedTenantId): void {
+                if (! is_string($value) || ! StoreAssetPath::accepts($value, $managedTenantId)) {
+                    $fail('The '.$attribute.' field must be an HTTPS URL or an exact same-store managed asset path.');
+                }
+            },
+        ];
     }
 }

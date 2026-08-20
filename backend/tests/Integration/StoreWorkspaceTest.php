@@ -22,11 +22,15 @@ use App\Enums\TenantVerificationStatus;
 use App\Enums\UserStatus;
 use App\Exceptions\InventoryConflict;
 use App\Exceptions\OrderConflict;
+use App\Exceptions\ProductCatalogConflict;
+use App\Exceptions\ProvisioningFailure;
+use App\Exceptions\StoreAssetConflict;
 use App\Models\DomainReservation;
 use App\Models\Permission;
 use App\Models\ProvisioningRun;
 use App\Models\PublicationRequest;
 use App\Models\Role;
+use App\Models\StoreSubmission;
 use App\Models\Tenant;
 use App\Models\TenantSubscription;
 use App\Models\User;
@@ -35,7 +39,10 @@ use App\Services\InventoryReservationService;
 use App\Services\OrderService;
 use App\Services\ProductCatalogService;
 use App\Services\RoleAssignmentService;
+use App\Services\StoreAssetService;
 use App\Services\StoreWorkspaceService;
+use App\Services\TenantProvisioningExecutor;
+use App\Support\TenantWorkspaceReadiness;
 use Database\Seeders\IdentitySeeder;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
@@ -43,6 +50,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Group;
@@ -1512,6 +1520,355 @@ class StoreWorkspaceTest extends TestCase
         }
     }
 
+    public function test_managed_store_asset_is_idempotent_private_until_bound_public_when_bound_and_pruned_after_detach(): void
+    {
+        Storage::fake('local');
+        [$tenant, $owner, $domain] = $this->readyTenant('store-asset-lifecycle');
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+        $this->assertIsString($png);
+        $key = (string) Str::uuid();
+
+        $first = $this->actingAs($owner)
+            ->withHeader('Idempotency-Key', $key)
+            ->post("/api/merchant/stores/{$tenant->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('logo.png', $png),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.mimeType', 'image/png')
+            ->json('data');
+        $replay = $this->actingAs($owner)
+            ->withHeader('Idempotency-Key', $key)
+            ->post("/api/merchant/stores/{$tenant->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('same-logo.png', $png),
+            ])
+            ->assertCreated()
+            ->json('data');
+        $this->assertSame($first['id'], $replay['id']);
+
+        $this->get("http://{$domain}{$first['url']}")->assertNotFound();
+        $privatePreview = $this->actingAs($owner)->get("http://127.0.0.1{$first['url']}")
+            ->assertOk()
+            ->assertHeader('content-type', 'image/png');
+        $this->assertStringContainsString('private', (string) $privatePreview->headers->get('cache-control'));
+        $this->assertStringContainsString('no-store', (string) $privatePreview->headers->get('cache-control'));
+
+        $workspace = $this->actingAs($owner)
+            ->getJson("/api/merchant/stores/{$tenant->id}/workspace")
+            ->assertOk()->json('data');
+        $workspace['config']['logoType'] = 'image';
+        $workspace['config']['logoUrl'] = $first['url'];
+        $bound = $this->actingAs($owner)
+            ->patchJson("/api/merchant/stores/{$tenant->id}/workspace", [
+                'revision' => $workspace['revision'],
+                'catalogRevision' => $workspace['catalogRevision'],
+                'config' => $workspace['config'],
+            ])->assertOk()->json('data');
+
+        Auth::forgetGuards();
+        $this->flushSession();
+        $publicAsset = $this->get("http://{$domain}{$first['url']}")
+            ->assertOk()
+            ->assertHeader('content-type', 'image/png');
+        $this->assertStringContainsString('no-store', (string) $publicAsset->headers->get('cache-control'));
+        $this->get("http://127.0.0.1{$first['url']}")->assertNotFound();
+
+        $tenant->forceFill(['publication_status' => PublicationStatus::Unpublished->value])->save();
+        $this->get("http://{$domain}{$first['url']}")->assertNotFound();
+        $tenant->forceFill(['publication_status' => PublicationStatus::Published->value])->save();
+
+        $bound['config']['logoType'] = 'icon';
+        $bound['config']['logoUrl'] = '';
+        $this->actingAs($owner)
+            ->patchJson("http://127.0.0.1/api/merchant/stores/{$tenant->id}/workspace", [
+                'revision' => $bound['revision'],
+                'catalogRevision' => $bound['catalogRevision'],
+                'config' => $bound['config'],
+            ])->assertOk();
+        Auth::forgetGuards();
+        $this->flushSession();
+        $this->get("http://{$domain}{$first['url']}")->assertNotFound();
+
+        $path = $tenant->run(function () use ($first): string {
+            DB::table('store_assets')->where('id', $first['id'])->update(['orphaned_at' => now()->subDays(2)]);
+
+            return (string) DB::table('store_assets')->where('id', $first['id'])->value('path');
+        });
+        $tenant->forceFill(['verification_status' => TenantVerificationStatus::Suspended->value])->save();
+        $this->assertSame(0, Artisan::call('store-assets:prune', ['--tenant' => [$tenant->id]]));
+        $tenant->run(fn () => $this->assertDatabaseMissing('store_assets', ['id' => $first['id']], 'tenant'));
+        Storage::disk('local')->assertMissing($path);
+    }
+
+    public function test_store_asset_rejects_cross_tenant_paths_invalid_replays_and_rolls_back_binding_on_stale_catalog(): void
+    {
+        Storage::fake('local');
+        [$tenantA, $ownerA, $domainA] = $this->readyTenant('store-asset-a');
+        [$tenantB, $ownerB, $domainB] = $this->readyTenant('store-asset-b');
+        $outsider = $this->user('store-asset-outsider@example.test');
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+        $this->assertIsString($png);
+        $key = (string) Str::uuid();
+        $asset = $this->actingAs($ownerA)
+            ->withHeader('Idempotency-Key', $key)
+            ->post("/api/merchant/stores/{$tenantA->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('asset.png', $png),
+            ])->assertCreated()->json('data');
+
+        $this->actingAs($ownerA)
+            ->withHeader('Idempotency-Key', $key)
+            ->post("/api/merchant/stores/{$tenantA->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('different.png', $png.'different'),
+            ])->assertConflict()->assertJsonPath('code', 'store_asset_idempotency_conflict');
+        Auth::forgetGuards();
+        $this->flushSession();
+        $this->actingAs($outsider)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->post("/api/merchant/stores/{$tenantA->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('forbidden.png', $png),
+            ])->assertForbidden();
+
+        Auth::forgetGuards();
+        $this->flushSession();
+        $workspaceB = $this->actingAs($ownerB)
+            ->getJson("/api/merchant/stores/{$tenantB->id}/workspace")->assertOk()->json('data');
+        $workspaceB['config']['logoType'] = 'image';
+        $workspaceB['config']['logoUrl'] = $asset['url'];
+        $this->actingAs($ownerB)->patchJson("/api/merchant/stores/{$tenantB->id}/workspace", [
+            'revision' => $workspaceB['revision'],
+            'catalogRevision' => $workspaceB['catalogRevision'],
+            'config' => $workspaceB['config'],
+        ])->assertUnprocessable()->assertJsonPath('code', 'workspace_asset_path_invalid');
+
+        Auth::forgetGuards();
+        $this->flushSession();
+        $workspaceA = $this->actingAs($ownerA)
+            ->getJson("/api/merchant/stores/{$tenantA->id}/workspace")->assertOk()->json('data');
+        foreach ([
+            'https://127.0.0.1/api/store-assets/'.$tenantA->id.'/'.Str::uuid(),
+            "https://{$domainA}/api/store-assets/{$tenantA->id}/".Str::uuid(),
+            "https://{$domainB}/api/store-assets/{$tenantA->id}/".Str::uuid(),
+            'https://cdn.example.test/api/%73tore-assets/'.$tenantA->id.'/'.Str::uuid(),
+            'https://cdn.example.test//api/store-assets/'.$tenantA->id.'/'.Str::uuid(),
+            'https://cdn.example.test/x/../api/store-assets/'.$tenantA->id.'/'.Str::uuid(),
+            '//cdn.example.test/logo.png',
+            'data:image/png;base64,unsafe',
+            'blob:http://127.0.0.1/unsafe',
+        ] as $invalidUrl) {
+            $invalidConfig = $workspaceA['config'];
+            $invalidConfig['heroBannerImage'] = $invalidUrl;
+            $this->actingAs($ownerA)->patchJson("/api/merchant/stores/{$tenantA->id}/workspace", [
+                'revision' => $workspaceA['revision'],
+                'catalogRevision' => $workspaceA['catalogRevision'],
+                'config' => $invalidConfig,
+            ])->assertUnprocessable()->assertJsonPath('code', 'workspace_asset_path_invalid');
+        }
+
+        $missingConfig = $workspaceA['config'];
+        $missingConfig['heroBannerImage'] = '/api/store-assets/'.$tenantA->id.'/'.Str::uuid();
+        $this->actingAs($ownerA)->patchJson("/api/merchant/stores/{$tenantA->id}/workspace", [
+            'revision' => $workspaceA['revision'],
+            'catalogRevision' => $workspaceA['catalogRevision'],
+            'config' => $missingConfig,
+        ])->assertConflict()->assertJsonPath('code', 'workspace_asset_unavailable');
+
+        $catalog = $this->actingAs($ownerA)
+            ->getJson("/api/merchant/stores/{$tenantA->id}/catalog")->assertOk()->json('data');
+        $catalog['products'][0]['description'] = 'A concurrent catalog update';
+        $this->actingAs($ownerA)->patchJson("/api/merchant/stores/{$tenantA->id}/catalog", [
+            'catalogRevision' => $catalog['revision'],
+            'currencyCode' => $catalog['currencyCode'],
+            'products' => $catalog['products'],
+            'archiveProductIds' => [],
+        ])->assertOk();
+
+        $workspaceA['config']['logoType'] = 'image';
+        $workspaceA['config']['logoUrl'] = $asset['url'];
+        $this->actingAs($ownerA)->patchJson("/api/merchant/stores/{$tenantA->id}/workspace", [
+            'revision' => $workspaceA['revision'],
+            'catalogRevision' => $workspaceA['catalogRevision'],
+            'config' => $workspaceA['config'],
+        ])->assertConflict()->assertJsonPath('code', 'catalog_revision_conflict');
+        $tenantA->run(function () use ($asset): void {
+            $this->assertNotNull(DB::table('store_assets')->where('id', $asset['id'])->value('orphaned_at'));
+            $config = json_decode((string) DB::table('store_configs')->where('is_current', true)->value('config_json'), true, 512, JSON_THROW_ON_ERROR);
+            $this->assertNotSame($asset['url'], $config['logoUrl'] ?? null);
+        });
+    }
+
+    public function test_store_asset_upload_enforces_content_and_tenant_quota_while_exact_replay_remains_available(): void
+    {
+        Storage::fake('local');
+        [$tenant, $owner] = $this->readyTenant('store-asset-quota');
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+        $this->assertIsString($png);
+        $key = (string) Str::uuid();
+        $request = fn (string $requestKey, UploadedFile $file) => $this->actingAs($owner)
+            ->withHeader('Idempotency-Key', $requestKey)
+            ->post("/api/merchant/stores/{$tenant->id}/assets", ['image' => $file]);
+
+        $request((string) Str::uuid(), UploadedFile::fake()->createWithContent('not-image.txt', 'not image'))
+            ->assertConflict()->assertJsonPath('code', 'store_asset_invalid');
+        config(['store_assets.max_pixels' => 0]);
+        $request((string) Str::uuid(), UploadedFile::fake()->createWithContent('pixels.png', $png))
+            ->assertConflict()->assertJsonPath('code', 'store_asset_invalid');
+        config(['store_assets.max_pixels' => 25_000_000]);
+        $request($key, UploadedFile::fake()->createWithContent('valid.png', $png))->assertCreated();
+        config(['store_assets.max_assets_per_tenant' => 0]);
+        $request($key, UploadedFile::fake()->createWithContent('replay.png', $png))->assertCreated();
+        $request((string) Str::uuid(), UploadedFile::fake()->createWithContent('over-quota.png', $png))
+            ->assertConflict()->assertJsonPath('code', 'store_asset_quota_exceeded');
+    }
+
+    public function test_store_asset_recovers_staging_counts_cleanup_tombstones_and_refuses_unsafe_or_destructive_database_changes(): void
+    {
+        Storage::fake('local');
+        [$tenant, $owner] = $this->readyTenant('store-asset-recovery');
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+        $this->assertIsString($png);
+        $key = (string) Str::uuid();
+        $upload = $this->actingAs($owner)->withHeader('Idempotency-Key', $key)
+            ->post("/api/merchant/stores/{$tenant->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('recover.png', $png),
+            ])->assertCreated()->json('data');
+
+        $path = $tenant->run(function () use ($upload): string {
+            $row = DB::table('store_assets')->where('id', $upload['id'])->firstOrFail();
+            DB::table('store_assets')->where('id', $upload['id'])->update([
+                'state' => 'staging',
+                'orphaned_at' => now()->subDays(2),
+                'updated_at' => now(),
+            ]);
+
+            return (string) $row->path;
+        });
+        Storage::disk('local')->delete($path);
+        config(['store_assets.max_assets_per_tenant' => 1]);
+        $this->actingAs($owner)->withHeader('Idempotency-Key', $key)
+            ->post("/api/merchant/stores/{$tenant->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('recover-again.png', $png),
+            ])->assertCreated()->assertJsonPath('data.id', $upload['id']);
+        Storage::disk('local')->assertExists($path);
+        $tenant->run(function () use ($upload): void {
+            $this->assertSame('ready', DB::table('store_assets')->where('id', $upload['id'])->value('state'));
+            try {
+                DB::table('store_assets')->where('id', $upload['id'])->update(['path' => '../unsafe.png']);
+                $this->fail('The database accepted an unsafe store asset path.');
+            } catch (QueryException) {
+                $this->assertNotSame('../unsafe.png', DB::table('store_assets')->where('id', $upload['id'])->value('path'));
+            }
+            try {
+                DB::table('store_assets')->where('id', $upload['id'])->update([
+                    'state' => 'staging',
+                    'orphaned_at' => null,
+                    'cleanup_started_at' => null,
+                ]);
+                $this->fail('The database accepted a staging asset without an orphan timestamp.');
+            } catch (QueryException) {
+                $this->assertSame('ready', DB::table('store_assets')->where('id', $upload['id'])->value('state'));
+            }
+            DB::table('store_assets')->where('id', $upload['id'])->update([
+                'state' => 'cleanup',
+                'orphaned_at' => now()->subDays(2),
+                'cleanup_started_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $migration = require database_path('migrations/tenant/2026_08_20_000008_create_store_assets.php');
+            try {
+                $migration->down();
+                $this->fail('A populated managed asset table must refuse rollback.');
+            } catch (\RuntimeException) {
+                $this->assertTrue(Schema::hasTable('store_assets'));
+            }
+        });
+
+        $this->actingAs($owner)->withHeader('Idempotency-Key', $key)
+            ->post("/api/merchant/stores/{$tenant->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('cleanup-replay.png', $png),
+            ])->assertConflict()->assertJsonPath('code', 'workspace_asset_unavailable');
+        $this->actingAs($owner)->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->post("/api/merchant/stores/{$tenant->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('cleanup-counts.png', $png),
+            ])->assertConflict()->assertJsonPath('code', 'store_asset_quota_exceeded');
+    }
+
+    public function test_store_asset_readiness_requires_the_complete_schema_for_runtime_and_provisioning(): void
+    {
+        [$tenant] = $this->readyTenant('store-asset-partial-schema');
+        $submission = new StoreSubmission([
+            'tenant_id' => $tenant->id,
+            'initial_config_id' => $tenant->run(fn (): string => (string) DB::table('store_configs')
+                ->where('is_current', true)->value('id')),
+        ]);
+
+        $tenant->run(static fn () => Schema::table('store_assets', static function ($table): void {
+            $table->dropColumn('updated_at');
+        }));
+
+        $this->assertFalse(TenantWorkspaceReadiness::maintenanceCheck($tenant));
+        try {
+            app(TenantProvisioningExecutor::class)->assertReady($tenant, $submission);
+            $this->fail('Provisioning accepted a partial store asset schema.');
+        } catch (ProvisioningFailure $failure) {
+            $this->assertSame('tenant_readiness_failed', $failure->errorCode);
+        }
+    }
+
+    public function test_store_asset_bind_and_cleanup_serialize_across_real_connections_without_a_broken_reference(): void
+    {
+        Storage::fake('local');
+        [$tenant, $owner] = $this->readyTenant('store-asset-race');
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+        $this->assertIsString($png);
+        $asset = $this->actingAs($owner)->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->post("/api/merchant/stores/{$tenant->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('race.png', $png),
+            ])->assertCreated()->json('data');
+        $workspace = $this->actingAs($owner)
+            ->getJson("/api/merchant/stores/{$tenant->id}/workspace")->assertOk()->json('data');
+        $workspace['config']['logoType'] = 'image';
+        $workspace['config']['logoUrl'] = $asset['url'];
+        $tenant->run(fn () => DB::table('store_assets')->where('id', $asset['id'])->update([
+            'orphaned_at' => now()->subDays(2),
+            'updated_at' => now()->subDays(2),
+        ]));
+
+        $tenantId = (string) $tenant->id;
+        $ownerId = (string) $owner->id;
+        $payload = [
+            'revision' => $workspace['revision'],
+            'catalogRevision' => $workspace['catalogRevision'],
+            'config' => $workspace['config'],
+        ];
+        $results = $this->runConcurrentAssetOperations([
+            static function () use ($tenantId, $ownerId, $payload): void {
+                app(StoreWorkspaceService::class)->update(
+                    Tenant::query()->findOrFail($tenantId),
+                    User::query()->findOrFail($ownerId),
+                    $payload,
+                );
+            },
+            static function () use ($tenantId): void {
+                app(StoreAssetService::class)->pruneOrphans(Tenant::query()->findOrFail($tenantId));
+            },
+        ]);
+        $this->assertContains($results[0]['status'], ['ok', 'conflict']);
+        $this->assertSame('ok', $results[1]['status']);
+
+        $tenant->run(function () use ($asset): void {
+            $config = json_decode((string) DB::table('store_configs')->where('is_current', true)->value('config_json'), true, 512, JSON_THROW_ON_ERROR);
+            $referenced = ($config['logoUrl'] ?? null) === $asset['url'];
+            $row = DB::table('store_assets')->where('id', $asset['id'])->first();
+            if ($referenced) {
+                $this->assertNotNull($row);
+                $this->assertSame('ready', $row->state);
+                $this->assertNull($row->cleanup_started_at);
+                $this->assertTrue(Storage::disk((string) $row->disk)->exists((string) $row->path));
+            } else {
+                $this->assertNull($row);
+            }
+        });
+    }
+
     public function test_managed_catalog_media_is_idempotent_private_until_attached_and_public_only_for_published_product(): void
     {
         Storage::fake('local');
@@ -2163,6 +2520,75 @@ class StoreWorkspaceTest extends TestCase
             $this->assertNotSame('error', $decoded['status'] ?? null, (string) ($decoded['code'] ?? 'unknown child error'));
             $results[] = $decoded;
         }
+
+        return $results;
+    }
+
+    /**
+     * Run store-asset operations on independent PostgreSQL connections behind one barrier.
+     *
+     * @param  list<callable(): void>  $operations
+     * @return list<array{operation: int, status: string, code?: string}>
+     */
+    private function runConcurrentAssetOperations(array $operations): array
+    {
+        if (! function_exists('pcntl_fork') || ! function_exists('stream_socket_pair')) {
+            $this->fail('The database gate requires pcntl and socket pairs for real concurrent asset calls.');
+        }
+
+        $workers = [];
+        foreach ($operations as $index => $operation) {
+            $sockets = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+            if ($sockets === false) {
+                $this->fail('Unable to create the store-asset concurrency barrier socket.');
+            }
+            [$parentSocket, $childSocket] = $sockets;
+            $pid = pcntl_fork();
+            if ($pid === -1) {
+                $this->fail('Unable to fork a store-asset concurrency worker.');
+            }
+            if ($pid === 0) {
+                fclose($parentSocket);
+                fread($childSocket, 1);
+                try {
+                    if (tenancy()->initialized) {
+                        tenancy()->end();
+                    }
+                    $central = (string) config('tenancy.database.central_connection');
+                    DB::purge('tenant');
+                    DB::purge($central);
+                    DB::setDefaultConnection($central);
+                    $operation();
+                    $result = ['operation' => $index, 'status' => 'ok'];
+                } catch (StoreAssetConflict|ProductCatalogConflict $exception) {
+                    $result = ['operation' => $index, 'status' => 'conflict', 'code' => $exception->errorCode];
+                } catch (\Throwable $exception) {
+                    $result = ['operation' => $index, 'status' => 'error', 'code' => $exception::class.':'.$exception->getMessage()];
+                }
+                fwrite($childSocket, json_encode($result, JSON_THROW_ON_ERROR));
+                fclose($childSocket);
+                exit(0);
+            }
+            fclose($childSocket);
+            $workers[] = ['pid' => $pid, 'socket' => $parentSocket];
+        }
+
+        foreach ($workers as $worker) {
+            fwrite($worker['socket'], '1');
+        }
+
+        $results = [];
+        foreach ($workers as $worker) {
+            $payload = stream_get_contents($worker['socket']);
+            fclose($worker['socket']);
+            pcntl_waitpid($worker['pid'], $status);
+            $this->assertTrue(pcntl_wifexited($status) && pcntl_wexitstatus($status) === 0);
+            $decoded = json_decode((string) $payload, true, 512, JSON_THROW_ON_ERROR);
+            $this->assertNotSame('error', $decoded['status'] ?? null, (string) ($decoded['code'] ?? 'unknown child error'));
+            $results[] = $decoded;
+        }
+
+        usort($results, static fn (array $left, array $right): int => $left['operation'] <=> $right['operation']);
 
         return $results;
     }
