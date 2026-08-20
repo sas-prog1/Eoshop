@@ -4,7 +4,7 @@
 |---|---|
 | Phase | Phase 5 — Product experience and incremental frontend decomposition |
 | Work Package | WP 5.8 |
-| Status | Implemented; awaiting delivery |
+| Status | Verified locally; awaiting delivery |
 | Started | 2026-08-20 |
 | Branch | `codex/wp-5.8-store-profile` |
 | Base | Protected `main` at `2c769fc` |
@@ -95,7 +95,7 @@ Turn store identity and appearance into a focused, truthful merchant task and pr
 
 ### T5 — Evidence and delivery
 
-- [ ] Record exact evidence and retained checkout/page/platform debt.
+- [x] Record exact evidence and retained checkout/page/platform debt.
 - [x] Obtain final independent read-only approval.
 - [ ] Commit implementation and evidence separately, push, open PR, pass required CI and merge.
 
