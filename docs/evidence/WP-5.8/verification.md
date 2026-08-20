@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Work Package | WP 5.8 — Store profile, appearance and managed assets |
-| Status | Verified locally; awaiting delivery |
+| Status | Complete and merged |
 | Verified | 2026-08-20 |
 | Branch | `codex/wp-5.8-store-profile` |
 | Base | `2c769fca8c59246eb64e15b179484c40da29f752` |
@@ -65,5 +65,8 @@ Environment: exact WP 5.8 PHP 8.4 backend quality image.
 ## Delivery status
 
 - Implementation is recorded separately in `701e31c1f8ff936a160cd851959b11512c24102f`.
-- Evidence is awaiting its separate commit.
-- Pull-request, required-CI, merge and protected-main facts will be recorded only after they occur.
+- Evidence is recorded separately in `e5ebaac4f23c37e69eda754682620af1d323e3ee`.
+- Pull request [#40](https://github.com/sas-prog1/Eoshop/pull/40) was merged from final head `e5ebaac4f23c37e69eda754682620af1d323e3ee`.
+- Pull-request CI run [32404863504](https://github.com/sas-prog1/Eoshop/actions/runs/32404863504) passed all four required jobs: Repository safety, Backend quality, Frontend quality and Container integration.
+- Merge commit: `4e004b31ddc178d6f835914f1a57f4a91f738bd3`.
+- Protected-main CI run [32405399804](https://github.com/sas-prog1/Eoshop/actions/runs/32405399804) passed the same four required jobs after merge.
