@@ -64,15 +64,30 @@ export function deriveMerchantLifecycle(store: StoreSubmission): MerchantLifecyc
     });
   }
 
+  if (store.verificationStatus === "changes_requested") {
+    return lifecycle({
+      stage: "blocked",
+      tone: "warning",
+      label: "استكمال مطلوب",
+      headline: "طلبت المنصة استكمال بنود محددة",
+      explanation: store.reviewFeedback || "راجع البنود المحددة من فريق المنصة وأعد إرسال الطلب دون البدء من جديد.",
+      nextAction: "افتح طلب الاستكمال، صحح البنود المحددة فقط، ثم أعد الإرسال.",
+      actionOwner: "merchant",
+      completedSteps: 1,
+      canOpenBuilder: false,
+      isPublished: false,
+    });
+  }
+
   if (store.verificationStatus === "rejected") {
     return lifecycle({
       stage: "blocked",
       tone: "danger",
-      label: "بحاجة إلى تصحيح",
-      headline: "لم يُعتمد طلب المتجر",
-      explanation: store.reviewFeedback || "أعاد فريق المنصة الطلب ويحتاج إلى تصحيح قبل إرساله مجددًا.",
-      nextAction: "افتح الطلب، صحح البيانات المطلوبة، ثم أعد إرساله للمراجعة.",
-      actionOwner: "merchant",
+      label: "مرفوض",
+      headline: "رُفض طلب المتجر نهائيًا",
+      explanation: store.reviewFeedback || "أغلقت إدارة المنصة الطلب بعد المراجعة.",
+      nextAction: "راجع سبب القرار وتواصل مع دعم المنصة إذا احتجت إلى اعتراض أو طلب جديد.",
+      actionOwner: "platform",
       completedSteps: 1,
       canOpenBuilder: false,
       isPublished: false,

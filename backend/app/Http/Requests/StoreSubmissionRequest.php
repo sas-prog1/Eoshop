@@ -23,8 +23,8 @@ class StoreSubmissionRequest extends FormRequest
     {
         return [
             'idempotencyKey' => ['required', 'uuid'],
-            'draftId' => ['nullable', 'uuid'],
-            'expectedDraftRevision' => ['required_with:draftId', 'nullable', 'integer', 'min:1'],
+            'draftId' => ['required', 'uuid'],
+            'expectedDraftRevision' => ['required', 'integer', 'min:1'],
             'storeName' => ['required', 'string', 'max:255'],
             'businessType' => ['required', 'string', 'max:100'],
             'themeStyle' => ['required', Rule::in(['elegant', 'tech'])],

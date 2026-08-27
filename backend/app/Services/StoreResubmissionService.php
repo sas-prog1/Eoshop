@@ -37,6 +37,7 @@ class StoreResubmissionService
         private readonly PublicationService $publications,
         private readonly AdminAuditService $audit,
         private readonly MerchantMembershipService $memberships,
+        private readonly StoreApplicationService $applications,
     ) {}
 
     /** @return array{tenant: Tenant, replayed: bool} */
@@ -82,7 +83,10 @@ class StoreResubmissionService
                 $plan = Plan::query()->whereKey($draft->getAttribute('plan_key'))->where('is_active', true)->lockForUpdate()->firstOrFail();
 
                 Gate::forUser($lockedActor)->authorize('resubmitStore', $lockedTenant);
-                if ($lockedTenant->getAttribute('verification_status') !== TenantVerificationStatus::Rejected->value
+                if (! in_array($lockedTenant->getAttribute('verification_status'), [
+                    TenantVerificationStatus::ChangesRequested->value,
+                    TenantVerificationStatus::Rejected->value,
+                ], true)
                     || $lockedTenant->getAttribute('provisioning_status') !== ProvisioningState::NotStarted->value
                     || $draft->getAttribute('status') !== StoreDraftStatus::CorrectionRequired
                     || $publication->getAttribute('status') !== PublicationRequestStatus::Rejected
@@ -92,6 +96,8 @@ class StoreResubmissionService
                 if ((int) $draft->getAttribute('revision') !== $expectedRevision) {
                     throw StoreDraftConflict::revision();
                 }
+                $this->applications->assertCorrectionAddressed($draft);
+                $this->applications->assertReady($draft);
 
                 $centralDraftConfig = StorefrontSectionLayout::withoutLayout((array) $draft->getAttribute('config'));
                 $provisioningConfig = StorefrontSectionLayout::forProvisioning($centralDraftConfig);
@@ -115,6 +121,7 @@ class StoreResubmissionService
                     ->where('kind', DomainKind::Internal)
                     ->value('domain');
                 $nextSubmissionRevision = ((int) $submission->getAttribute('revision')) + 1;
+                $previousVerificationStatus = (string) $lockedTenant->getAttribute('verification_status');
                 $submission->forceFill([
                     'payload_snapshot' => [
                         'storeName' => $draft->getAttribute('store_name'),
@@ -130,6 +137,7 @@ class StoreResubmissionService
                             'name' => $lockedActor->getAttribute('name'),
                             'email' => $lockedActor->getAttribute('email'),
                         ],
+                        'applicationEvidence' => $this->applications->snapshot($draft),
                     ],
                     'revision' => $nextSubmissionRevision,
                     'revised_at' => now(),
@@ -150,6 +158,7 @@ class StoreResubmissionService
                     'saved_at' => now(),
                     'submitted_at' => now(),
                 ])->save();
+                $this->applications->resolveCorrection($draft, $lockedActor);
                 StoreResubmission::query()->create([
                     'tenant_id' => $lockedTenant->getKey(),
                     'store_draft_id' => $draft->getKey(),
@@ -167,7 +176,7 @@ class StoreResubmissionService
                     subject: $nextPublication,
                     tenant: $lockedTenant,
                     oldValues: [
-                        'verification_status' => TenantVerificationStatus::Rejected->value,
+                        'verification_status' => $previousVerificationStatus,
                         'draft_revision' => $expectedRevision,
                         'submission_revision' => $nextSubmissionRevision - 1,
                     ],

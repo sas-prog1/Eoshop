@@ -16,7 +16,7 @@ import {
 
 export type { AdminPlatformSettings, UpdatePlatformSettingsInput } from "./platformSettingsApi";
 
-export type VerificationStatus = "approved" | "pending" | "rejected" | "suspended";
+export type VerificationStatus = "approved" | "pending" | "changes_requested" | "rejected" | "suspended";
 export type ProvisioningStatus = "not_started" | "queued" | "provisioning" | "retrying" | "active" | "failed";
 export type PublicationStatus = "requested" | "published" | "unpublished" | "rejected";
 export type PlatformAttentionQueue = "review" | "provisioning" | "subscription" | "publication";
@@ -211,6 +211,7 @@ function mapOverview(value: unknown): PlatformOverview {
       total: numberField(stores, "total", "عدادات متاجر المنصة"),
       verification: {
         pending: numberField(verification, "pending", "عدادات مراجعة المتاجر"),
+        changes_requested: numberField(verification, "changesRequested", "عدادات مراجعة المتاجر"),
         approved: numberField(verification, "approved", "عدادات مراجعة المتاجر"),
         rejected: numberField(verification, "rejected", "عدادات مراجعة المتاجر"),
         suspended: numberField(verification, "suspended", "عدادات مراجعة المتاجر"),
@@ -306,7 +307,7 @@ function mapStore(value: unknown): PlatformStore {
     ownerEmail: stringField(dto, "ownerEmail", "متجر المنصة"),
     ownerPhone: nullableStringField(dto, "ownerPhone", "متجر المنصة"),
     businessType: stringField(dto, "businessType", "متجر المنصة"),
-    verificationStatus: enumField(dto, "verificationStatus", ["approved", "pending", "rejected", "suspended"] as const, "متجر المنصة"),
+    verificationStatus: enumField(dto, "verificationStatus", ["approved", "pending", "changes_requested", "rejected", "suspended"] as const, "متجر المنصة"),
     provisioningStatus: enumField(dto, "provisioningStatus", ["not_started", "queued", "provisioning", "retrying", "active", "failed"] as const, "متجر المنصة"),
     publicationStatus: enumField(dto, "publicationStatus", ["requested", "published", "unpublished", "rejected"] as const, "متجر المنصة"),
     rejectionReason: nullableStringField(dto, "rejectionReason", "متجر المنصة"),
@@ -455,11 +456,12 @@ export const adminApi = {
     storeId: string,
     status: VerificationStatus,
     reason?: string,
+    requestedFields?: string[],
   ): Promise<PlatformStore> {
     const payload = await apiClient.request<StoreResponse>(
       `/api/admin/stores/${encodeURIComponent(storeId)}/status`, {
         method: "PATCH",
-        body: { status, reason: reason || null },
+        body: { status, reason: reason || null, ...(status === "changes_requested" ? { requestedFields: requestedFields ?? [] } : {}) },
       });
 
     return mapStore(record(payload, "تحديث حالة المتجر").data);

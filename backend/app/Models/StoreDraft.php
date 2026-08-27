@@ -7,6 +7,8 @@ use App\Enums\StoreOnboardingStage;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Stancl\Tenancy\Database\Concerns\CentralConnection;
 
 class StoreDraft extends Model
@@ -44,5 +46,25 @@ class StoreDraft extends Model
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class, 'plan_key');
+    }
+
+    /** @return HasMany<StoreApplicationEvidence, $this> */
+    public function applicationEvidence(): HasMany
+    {
+        return $this->hasMany(StoreApplicationEvidence::class, 'store_draft_id');
+    }
+
+    /** @return HasMany<StoreApplicationEvent, $this> */
+    public function applicationEvents(): HasMany
+    {
+        return $this->hasMany(StoreApplicationEvent::class, 'store_draft_id')->orderBy('occurred_at');
+    }
+
+    /** @return HasOne<StoreCorrectionRequest, $this> */
+    public function openCorrectionRequest(): HasOne
+    {
+        return $this->hasOne(StoreCorrectionRequest::class, 'store_draft_id')
+            ->where('status', 'open')
+            ->orderByDesc('requested_at');
     }
 }

@@ -69,6 +69,7 @@ const emptyAudit: PaginatedResult<AdminAuditEvent> = { items: [], pagination: em
 
 const verificationLabel: Record<VerificationStatus, string> = {
   pending: "قيد المراجعة",
+  changes_requested: "استكمال مطلوب",
   approved: "مقبول",
   rejected: "مرفوض",
   suspended: "موقوف",
@@ -76,10 +77,21 @@ const verificationLabel: Record<VerificationStatus, string> = {
 
 const verificationClass: Record<VerificationStatus, string> = {
   pending: "border-amber-200 bg-amber-50 text-amber-800",
+  changes_requested: "border-orange-200 bg-orange-50 text-orange-800",
   approved: "border-emerald-200 bg-emerald-50 text-emerald-800",
   rejected: "border-rose-200 bg-rose-50 text-rose-800",
   suspended: "border-slate-300 bg-slate-100 text-slate-800",
 };
+
+const correctionFieldOptions = [
+  ["business.store_name", "اسم المتجر"],
+  ["business.business_type", "نوع النشاط"],
+  ["design.appearance", "التصميم والمحتوى"],
+  ["publication.handle", "عنوان المتجر"],
+  ["subscription.plan", "الباقة"],
+  ["documents.owner_identity", "إثبات هوية المالك"],
+  ["documents.commercial_registration", "السجل أو الترخيص التجاري"],
+] as const;
 
 const provisioningLabel: Record<PlatformStore["provisioningStatus"], string> = {
   not_started: "لم يبدأ",
@@ -186,8 +198,9 @@ export default function PlatformAdminConsole({
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsForbidden, setSettingsForbidden] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
-  const [reasonDecision, setReasonDecision] = useState<{ store: PlatformStore; status: "rejected" | "suspended" } | null>(null);
+  const [reasonDecision, setReasonDecision] = useState<{ store: PlatformStore; status: "changes_requested" | "rejected" | "suspended" } | null>(null);
   const [reason, setReason] = useState("");
+  const [requestedFields, setRequestedFields] = useState<string[]>([]);
   const [activationStore, setActivationStore] = useState<PlatformStore | null>(null);
   const [subscriptionEndsAt, setSubscriptionEndsAt] = useState("");
 
@@ -237,6 +250,7 @@ export default function PlatformAdminConsole({
     setStoresError(null);
     setReasonDecision(null);
     setReason("");
+    setRequestedFields([]);
     setActivationStore(null);
     setSubscriptionEndsAt("");
     setStoresForbidden(true);
@@ -376,14 +390,15 @@ export default function PlatformAdminConsole({
     }
   };
 
-  const updateStatus = async (storeRecord: PlatformStore, status: VerificationStatus, decisionReason?: string) => {
+  const updateStatus = async (storeRecord: PlatformStore, status: VerificationStatus, decisionReason?: string, fields?: string[]) => {
     await runMutation(
       storeRecord,
-      () => administration.updateStoreStatus(storeRecord.id, status, decisionReason),
+      () => administration.updateStoreStatus(storeRecord.id, status, decisionReason, fields),
       "تم تحديث حالة المتجر وتسجيل العملية.",
     );
     setReasonDecision(null);
     setReason("");
+    setRequestedFields([]);
   };
 
   const openQueue = (attention: PlatformAttentionQueue) => {
@@ -530,7 +545,7 @@ export default function PlatformAdminConsole({
                   <input value={storeSearch} minLength={2} maxLength={100} onChange={(event) => setStoreSearch(event.target.value)} placeholder="المتجر أو المالك أو البريد" className="w-full rounded-xl border border-slate-200 py-2.5 pr-10 pl-3 text-sm outline-none focus:border-indigo-400" />
                 </label>
                 <select aria-label="حالة المراجعة" value={storeQuery.verification ?? ""} onChange={(event) => setStoreQuery((current) => ({ ...current, verification: (event.target.value || undefined) as VerificationStatus | undefined, page: 1 }))} className="rounded-xl border border-slate-200 px-3 py-2 text-xs">
-                  <option value="">كل حالات المراجعة</option><option value="pending">قيد المراجعة</option><option value="approved">مقبول</option><option value="rejected">مرفوض</option><option value="suspended">موقوف</option>
+                  <option value="">كل حالات المراجعة</option><option value="pending">قيد المراجعة</option><option value="changes_requested">استكمال مطلوب</option><option value="approved">مقبول</option><option value="rejected">مرفوض</option><option value="suspended">موقوف</option>
                 </select>
                 <select aria-label="طابور الانتباه" value={storeQuery.attention ?? ""} onChange={(event) => setStoreQuery((current) => ({ ...current, attention: (event.target.value || undefined) as PlatformAttentionQueue | undefined, page: 1 }))} className="rounded-xl border border-slate-200 px-3 py-2 text-xs">
                   <option value="">كل الطوابير</option><option value="review">المراجعة</option><option value="provisioning">التجهيز</option><option value="subscription">الاشتراك</option><option value="publication">النشر</option>
@@ -550,7 +565,7 @@ export default function PlatformAdminConsole({
                       canReview={canReview}
                       canManage={canManage}
                       onStatus={(status, decisionReason) => updateStatus(storeRecord, status, decisionReason)}
-                      onReason={(status) => setReasonDecision({ store: storeRecord, status })}
+                      onReason={(status) => { setReasonDecision({ store: storeRecord, status }); setRequestedFields(status === "changes_requested" ? ["business.store_name"] : []); }}
                       onRetry={() => runMutation(storeRecord, () => administration.retryProvisioning(storeRecord.id), "تمت جدولة إعادة تجهيز المتجر.")}
                       onActivate={() => setActivationStore(storeRecord)}
                       onPublish={() => runMutation(storeRecord, () => administration.publish(storeRecord.id), "تم نشر المتجر بعد اجتياز الشروط.")}
@@ -610,13 +625,15 @@ export default function PlatformAdminConsole({
 
       {reasonDecision && (
         <DecisionDialog
-          title={`${reasonDecision.status === "rejected" ? "ملاحظة رفض" : "سبب تعليق"} ${reasonDecision.store.storeName}`}
-          hint={reasonDecision.status === "rejected" ? "ستظهر هذه الملاحظة لصاحب المتجر؛ اكتب خطوات تصحيح واضحة." : "سجّل سببًا تشغيليًا واضحًا."}
+          title={`${reasonDecision.status === "changes_requested" ? "طلب استكمال" : reasonDecision.status === "rejected" ? "رفض نهائي" : "سبب تعليق"} ${reasonDecision.store.storeName}`}
+          hint={reasonDecision.status === "changes_requested" ? "حدد البنود المطلوبة فقط، واكتب توجيهًا يستطيع التاجر تنفيذه دون إعادة الرحلة." : reasonDecision.status === "rejected" ? "قرار نهائي منفصل عن طلب الاستكمال؛ اكتب سببًا مهنيًا واضحًا." : "سجّل سببًا تشغيليًا واضحًا."}
           value={reason}
+          requestedFields={reasonDecision.status === "changes_requested" ? requestedFields : undefined}
           busy={mutationPending}
           onChange={setReason}
-          onCancel={() => { setReasonDecision(null); setReason(""); }}
-          onConfirm={() => { void updateStatus(reasonDecision.store, reasonDecision.status, reason.trim()).catch(() => undefined); }}
+          onRequestedFieldsChange={setRequestedFields}
+          onCancel={() => { setReasonDecision(null); setReason(""); setRequestedFields([]); }}
+          onConfirm={() => { void updateStatus(reasonDecision.store, reasonDecision.status, reason.trim(), requestedFields).catch(() => undefined); }}
         />
       )}
 
@@ -676,7 +693,7 @@ interface StoreCardProps {
   canReview: boolean;
   canManage: boolean;
   onStatus: (status: VerificationStatus, reason?: string) => Promise<void>;
-  onReason: (status: "rejected" | "suspended") => void;
+  onReason: (status: "changes_requested" | "rejected" | "suspended") => void;
   onRetry: () => Promise<void>;
   onActivate: () => void;
   onPublish: () => Promise<void>;
@@ -694,7 +711,7 @@ function StoreCard({ store, busy, canReview, canManage, onStatus, onReason, onRe
       {store.rejectionReason && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-xs text-rose-800">السبب: {store.rejectionReason}</p>}
       {store.publicDomain && store.publicationStatus === "published" && <a href={publicStoreUrl(store.publicDomain)} target="_blank" rel="noreferrer" className="mt-3 flex items-center gap-1 text-xs font-bold text-emerald-700"><ExternalLink className="h-4 w-4" /> فتح المتجر المنشور</a>}
       <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-        {store.verificationStatus === "pending" && canReview && <><button disabled={busy} type="button" onClick={() => { void onStatus("approved").catch(() => undefined); }} className="flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"><CheckCircle2 className="h-4 w-4" /> قبول</button><button disabled={busy} type="button" onClick={() => onReason("rejected")} className="flex items-center gap-1 rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"><XCircle className="h-4 w-4" /> رفض</button></>}
+        {store.verificationStatus === "pending" && canReview && <><button disabled={busy} type="button" onClick={() => { void onStatus("approved").catch(() => undefined); }} className="flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"><CheckCircle2 className="h-4 w-4" /> قبول</button><button disabled={busy} type="button" onClick={() => onReason("changes_requested")} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-slate-950 disabled:opacity-50">طلب استكمال</button><button disabled={busy} type="button" onClick={() => onReason("rejected")} className="flex items-center gap-1 rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"><XCircle className="h-4 w-4" /> رفض نهائي</button></>}
         {store.verificationStatus === "approved" && canManage && <button disabled={busy} type="button" onClick={() => onReason("suspended")} className="flex items-center gap-1 rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"><Ban className="h-4 w-4" /> تعليق</button>}
         {store.verificationStatus === "suspended" && canManage && <button disabled={busy} type="button" onClick={() => { void onStatus("approved").catch(() => undefined); }} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">إعادة التفعيل</button>}
         {store.verificationStatus === "rejected" && canManage && <button disabled={busy} type="button" onClick={() => { void onStatus("pending").catch(() => undefined); }} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold disabled:opacity-50">إعادة للمراجعة</button>}
@@ -708,8 +725,8 @@ function StoreCard({ store, busy, canReview, canManage, onStatus, onReason, onRe
   );
 }
 
-function DecisionDialog({ title, hint, value, busy, onChange, onCancel, onConfirm }: { title: string; hint: string; value: string; busy: boolean; onChange: (value: string) => void; onCancel: () => void; onConfirm: () => void }) {
-  return <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/70 p-4" dir="rtl"><div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"><h2 className="font-black">{title}</h2><p className="mt-2 text-xs leading-6 text-slate-500">{hint}</p><textarea required maxLength={1000} value={value} onChange={(event) => onChange(event.target.value)} className="mt-4 min-h-32 w-full rounded-xl border border-slate-200 p-3 text-sm" /><div className="mt-4 flex gap-2"><button type="button" disabled={busy || !value.trim()} onClick={onConfirm} className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">تأكيد</button><button type="button" onClick={onCancel} className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold">إلغاء</button></div></div></div>;
+function DecisionDialog({ title, hint, value, requestedFields, busy, onChange, onRequestedFieldsChange, onCancel, onConfirm }: { title: string; hint: string; value: string; requestedFields?: string[]; busy: boolean; onChange: (value: string) => void; onRequestedFieldsChange: (value: string[]) => void; onCancel: () => void; onConfirm: () => void }) {
+  return <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/70 p-4" dir="rtl"><div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"><h2 className="font-black">{title}</h2><p className="mt-2 text-xs leading-6 text-slate-500">{hint}</p>{requestedFields && <fieldset className="mt-4 rounded-2xl border border-slate-200 p-4"><legend className="px-2 text-xs font-black">البنود المطلوب تصحيحها</legend><div className="grid gap-2 sm:grid-cols-2">{correctionFieldOptions.map(([key, label]) => <label key={key} className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs font-bold"><input type="checkbox" checked={requestedFields.includes(key)} onChange={(event) => onRequestedFieldsChange(event.target.checked ? [...requestedFields, key] : requestedFields.filter((item) => item !== key))} />{label}</label>)}</div></fieldset>}<textarea required maxLength={1000} value={value} onChange={(event) => onChange(event.target.value)} className="mt-4 min-h-32 w-full rounded-xl border border-slate-200 p-3 text-sm" /><div className="mt-4 flex gap-2"><button type="button" disabled={busy || !value.trim() || (requestedFields !== undefined && requestedFields.length === 0)} onClick={onConfirm} className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">تأكيد</button><button type="button" onClick={onCancel} className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold">إلغاء</button></div></div></div>;
 }
 
 function ActivationDialog({ store, value, busy, onChange, onCancel, onConfirm }: { store: PlatformStore; value: string; busy: boolean; onChange: (value: string) => void; onCancel: () => void; onConfirm: () => void }) {

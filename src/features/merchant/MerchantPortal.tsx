@@ -122,7 +122,7 @@ export default function MerchantPortal({
     : draft?.nextRequiredStep === "review"
       ? "العنوان والباقة ثم الإرسال"
       : draft?.nextRequiredStep === "submit"
-        ? "تأكيد الإرسال النهائي"
+        ? draft.application?.ready ? "تأكيد الإرسال النهائي" : "استكمال وثائق الطلب"
         : "بيانات النشاط";
   const draftProgress = draft?.nextRequiredStep === "submit"
     ? 3
@@ -466,8 +466,12 @@ export default function MerchantPortal({
                   </div>
                 </div>
 
-                {selectedStore.reviewFeedback && selectedStore.verificationStatus === "rejected" && (
-                  <div className="rounded-2xl border border-rose-200 bg-white p-4"><p className="text-xs font-black text-rose-700">ملاحظة فريق المراجعة لك</p><p className="mt-2 text-sm leading-7 text-slate-700">{selectedStore.reviewFeedback}</p></div>
+                {selectedStore.reviewFeedback && ["changes_requested", "rejected"].includes(selectedStore.verificationStatus) && (
+                  <div className={`rounded-2xl border bg-white p-4 ${selectedStore.verificationStatus === "changes_requested" ? "border-amber-200" : "border-rose-200"}`}><p className={`text-xs font-black ${selectedStore.verificationStatus === "changes_requested" ? "text-amber-800" : "text-rose-700"}`}>{selectedStore.verificationStatus === "changes_requested" ? "بنود الاستكمال المطلوبة" : "سبب الرفض النهائي"}</p><p className="mt-2 text-sm leading-7 text-slate-700">{selectedStore.reviewFeedback}</p>{selectedStore.application?.correctionRequest && <div className="mt-3 flex flex-wrap gap-2">{selectedStore.application.correctionRequest.requestedFieldLabels.map((label) => <span key={label} className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-black text-amber-900">{label}</span>)}</div>}</div>
+                )}
+
+                {selectedStore.application && selectedStore.application.timeline.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-xs font-black text-slate-700">سجل رحلة الطلب</p><ol className="mt-3 space-y-2">{selectedStore.application.timeline.slice(-5).reverse().map((event) => <li key={event.id} className="flex items-start gap-2 text-xs leading-6 text-slate-600"><Clock3 className="mt-1 h-3.5 w-3.5 shrink-0 text-slate-400" /><span>{event.message}</span></li>)}</ol></div>
                 )}
 
                 {selectedStore.publicationBlockers.length > 0 && !selectedLifecycle.isPublished && (

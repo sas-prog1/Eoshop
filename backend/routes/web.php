@@ -15,6 +15,7 @@ use App\Http\Controllers\MerchantDashboardController;
 use App\Http\Controllers\MerchantInventoryController;
 use App\Http\Controllers\MerchantOrderController;
 use App\Http\Controllers\MerchantProductCatalogController;
+use App\Http\Controllers\MerchantStoreApplicationController;
 use App\Http\Controllers\MerchantStoreAssetController;
 use App\Http\Controllers\MerchantStoreController;
 use App\Http\Controllers\MerchantStoreDraftController;
@@ -114,6 +115,17 @@ Route::middleware('central.domain')->group(function (): void {
         Route::get('/merchant/store-drafts/{draft}/submission', [MerchantStoreController::class, 'recoverSubmission'])
             ->whereUuid('draft');
         Route::get('/merchant/store-draft', [MerchantStoreDraftController::class, 'current']);
+        Route::get('/merchant/store-drafts/{draft}/application', [MerchantStoreApplicationController::class, 'show'])
+            ->whereUuid('draft');
+        Route::post('/merchant/store-drafts/{draft}/evidence/{requirement}', [MerchantStoreApplicationController::class, 'upload'])
+            ->whereUuid('draft')
+            ->middleware('throttle:merchant.mutations');
+        Route::put('/merchant/store-drafts/{draft}/exemptions/{requirement}', [MerchantStoreApplicationController::class, 'exempt'])
+            ->whereUuid('draft')
+            ->middleware('throttle:merchant.mutations');
+        Route::get('/merchant/store-drafts/{draft}/evidence/{evidence}', [MerchantStoreApplicationController::class, 'download'])
+            ->whereUuid('draft')
+            ->whereUuid('evidence');
         Route::put('/merchant/store-draft/business', [MerchantStoreDraftController::class, 'saveBusiness'])
             ->middleware('throttle:merchant.mutations');
         Route::put('/merchant/store-draft/design', [MerchantStoreDraftController::class, 'saveDesign'])

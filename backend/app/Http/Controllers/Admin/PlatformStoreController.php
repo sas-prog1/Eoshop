@@ -52,6 +52,7 @@ class PlatformStoreController extends Controller
                 reason: $request->validated('reason'),
                 actor: $actor,
                 request: $request,
+                requestedFields: (array) ($request->validated('requestedFields') ?? []),
             );
         } catch (StoreSubmissionConflict $exception) {
             return response()->json(['message' => $exception->getMessage()], 409);
@@ -166,6 +167,9 @@ class PlatformStoreController extends Controller
             'currentPublicationRequest.subscription.plan',
             'publishedDomain',
             'publicationSubscription.plan',
+            'draft.applicationEvidence',
+            'draft.applicationEvents',
+            'draft.openCorrectionRequest',
         ];
     }
 }

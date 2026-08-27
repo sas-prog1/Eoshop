@@ -58,6 +58,9 @@ class MerchantStoreController extends Controller
             'currentPublicationRequest.subscription.plan',
             'publishedDomain',
             'publicationSubscription.plan',
+            'draft.applicationEvidence',
+            'draft.applicationEvents',
+            'draft.openCorrectionRequest',
         ];
     }
 }

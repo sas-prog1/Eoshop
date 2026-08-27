@@ -188,6 +188,7 @@ class StoreDraftLifecycleTest extends TestCase
     {
         $owner = $this->createUser('concurrent-submit@example.test');
         $draft = $this->saveDraft($owner, 'concurrent', 'concurrent-submit', 'starter');
+        $this->resolveStoreApplicationRequirements($draft, $owner);
         $key = (string) Str::uuid();
         $payload = $this->submissionPayloadForDraft($draft) + [
             'draftId' => $draft->id,
@@ -260,8 +261,9 @@ class StoreDraftLifecycleTest extends TestCase
 
         $this->startBrowserSessionAs($reviewer);
         $this->patchJson("/api/admin/stores/{$tenant->id}/status", [
-            'status' => TenantVerificationStatus::Rejected->value,
+            'status' => TenantVerificationStatus::ChangesRequested->value,
             'reason' => 'Please correct the store identity.',
+            'requestedFields' => ['business.store_name'],
         ])->assertOk();
 
         $draft->refresh();
@@ -328,8 +330,9 @@ class StoreDraftLifecycleTest extends TestCase
         $reviewer = $this->createPlatformUser('membership-reviewer@example.test', SystemRole::PlatformReviewer);
         $this->startBrowserSessionAs($reviewer);
         $this->patchJson("/api/admin/stores/{$tenant->id}/status", [
-            'status' => TenantVerificationStatus::Rejected->value,
+            'status' => TenantVerificationStatus::ChangesRequested->value,
             'reason' => 'Correction required.',
+            'requestedFields' => ['business.store_name'],
         ])->assertOk();
         $correctionRevision = (int) $draft->refresh()->revision;
 
@@ -373,8 +376,9 @@ class StoreDraftLifecycleTest extends TestCase
         $reviewer = $this->createPlatformUser('plan-change-reviewer@example.test', SystemRole::PlatformReviewer);
         $this->startBrowserSessionAs($reviewer);
         $this->patchJson("/api/admin/stores/{$tenant->id}/status", [
-            'status' => TenantVerificationStatus::Rejected->value,
+            'status' => TenantVerificationStatus::ChangesRequested->value,
             'reason' => 'Select the requested package.',
+            'requestedFields' => ['subscription.plan'],
         ])->assertOk();
         $correctionRevision = (int) $draft->refresh()->revision;
 
@@ -490,6 +494,9 @@ class StoreDraftLifecycleTest extends TestCase
     private function submitDraft(User $owner, StoreDraft $draft, string $label, ?string $idempotencyKey = null): Tenant
     {
         $this->startBrowserSessionAs($owner);
+        if (! $draft->applicationEvidence()->exists()) {
+            $this->resolveStoreApplicationRequirements($draft, $owner);
+        }
         $payload = $this->submissionPayloadForDraft($draft) + [
             'draftId' => $draft->id,
             'expectedDraftRevision' => $draft->revision,

@@ -40,6 +40,7 @@ class TenantPolicy
 
         return match ([$currentStatus, $status]) {
             [TenantVerificationStatus::Pending, TenantVerificationStatus::Approved],
+            [TenantVerificationStatus::Pending, TenantVerificationStatus::ChangesRequested],
             [TenantVerificationStatus::Pending, TenantVerificationStatus::Rejected] => $user->hasPlatformPermission(PermissionKey::PlatformStoresReview),
             [TenantVerificationStatus::Approved, TenantVerificationStatus::Suspended],
             [TenantVerificationStatus::Suspended, TenantVerificationStatus::Approved] => $user->hasPlatformPermission(PermissionKey::PlatformStoresManage),
@@ -95,7 +96,10 @@ class TenantPolicy
 
     public function editStoreDraft(User $user, Tenant $tenant): bool
     {
-        return $tenant->getAttribute('verification_status') === TenantVerificationStatus::Rejected->value
+        return in_array($tenant->getAttribute('verification_status'), [
+            TenantVerificationStatus::ChangesRequested->value,
+            TenantVerificationStatus::Rejected->value,
+        ], true)
             && $tenant->getAttribute('provisioning_status') === ProvisioningState::NotStarted->value
             && $this->hasActiveOwnerMembership($user, $tenant);
     }

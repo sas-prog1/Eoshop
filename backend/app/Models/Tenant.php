@@ -58,6 +58,12 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         return $this->hasOne(StoreDraft::class, 'tenant_id');
     }
 
+    /** @return HasMany<StoreCorrectionRequest, $this> */
+    public function correctionRequests(): HasMany
+    {
+        return $this->hasMany(StoreCorrectionRequest::class, 'tenant_id');
+    }
+
     /** @return HasMany<ProvisioningRun, $this> */
     public function provisioningRuns(): HasMany
     {

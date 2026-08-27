@@ -33,7 +33,7 @@ export type {
 } from "../services/adminApi";
 export type { GeneratedStoreIdeas, GeneratedStoreProduct } from "../services/assistantApi";
 export type { StorePlan } from "../services/plansApi";
-export type { StoreDraft, StoreDraftInput, StoreSubmission, StoreSubmissionInput } from "../services/provisioningApi";
+export type { StoreApplicationDossier, StoreApplicationEvidence, StoreApplicationRequirement, StoreDraft, StoreDraftInput, StoreSubmission, StoreSubmissionInput } from "../services/provisioningApi";
 export type { StoreWorkspace } from "../services/workspaceApi";
 export type { CatalogSnapshot } from "../services/catalogApi";
 export type { StoreAssetUpload } from "../services/storeAssetApi";

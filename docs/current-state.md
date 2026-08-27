@@ -29,16 +29,17 @@ Eoshop has a server-authoritative commerce core, a repeatable local Pilot and a 
 - WP 5.19: end-to-end existing-store customization completion, bounded provisioning refresh and server-confirmed publication continuity.
 - WP 5.20: discoverable merchant store management, capability-aware shortcuts and recoverable public-storefront loading.
 - WP 5.21: public-storefront loading/error semantics, keyboard and cart/checkout focus behavior, reduced motion, readable merchant colors, secure local-HTTP request identity and verified 320–1440 px reflow.
-- WP 5.22 implementation: one canonical, permission-aware merchant launch console backed by tenant database aggregates and existing operational modules; delivery gates are in progress.
+- WP 5.22: one canonical, permission-aware merchant launch console backed by tenant database aggregates and existing operational modules, verified and merged.
+- WP 5.23 implementation: server-owned store application requirements, private evidence, a durable review timeline and targeted correction/resubmission; delivery gates are in progress.
 
 ## Active
 
-- WP 5.22 — merchant launch console delivery and Pilot acceptance.
+- WP 5.23 — store application dossier, evidence and correction delivery.
 
 ## Approved next sequence
 
-1. Close WP 5.22 through complete container, Pilot, review, CI and protected-branch gates.
-2. Implement the platform application-review workspace and active-store operations view as a separate bounded work package.
+1. Close WP 5.23 through complete container, Pilot, review, CI and protected-branch gates.
+2. Implement WP 5.24 platform application-review workspace and active-store operations view on the dossier contract.
 3. Add only the launch-required merchant/platform management gaps, then run the connected-system acceptance review.
 4. Restore richer appearance options through bounded server-owned contracts before broader visual refinement.
 5. Complete local-market payment verification/notifications, then continue to Phase 6 staging, observability, backup and scale work.

@@ -10,7 +10,7 @@ export interface StoreSubmission {
   id: string;
   storeName: string;
   businessType: string;
-  verificationStatus: "pending" | "approved" | "rejected" | "suspended";
+  verificationStatus: "pending" | "changes_requested" | "approved" | "rejected" | "suspended";
   provisioningStatus: "not_started" | "queued" | "provisioning" | "retrying" | "active" | "failed";
   publicationStatus: "requested" | "published" | "unpublished" | "rejected";
   reviewFeedback: string | null;
@@ -39,6 +39,52 @@ export interface StoreSubmission {
   createdAt: string | null;
   activeAt: string | null;
   publishedAt: string | null;
+  application?: StoreApplicationDossier | null;
+}
+
+export interface StoreApplicationEvidence {
+  id: string;
+  resolution: "uploaded" | "exempted";
+  reviewStatus: "pending" | "accepted" | "rejected";
+  originalName: string | null;
+  mimeType: string | null;
+  byteSize: number | null;
+  exemptionReason: string | null;
+  uploadedAt: string | null;
+  downloadUrl: string | null;
+}
+
+export interface StoreApplicationRequirement {
+  key: string;
+  label: string;
+  description: string;
+  uploadRequired: boolean;
+  allowExemption: boolean;
+  resolved: boolean;
+  evidence: StoreApplicationEvidence | null;
+}
+
+export interface StoreApplicationDossier {
+  draftId: string;
+  tenantId: string | null;
+  draftRevision: number;
+  ready: boolean;
+  blockers: string[];
+  requirements: StoreApplicationRequirement[];
+  correctionRequest: {
+    id: string;
+    reason: string;
+    requestedFields: string[];
+    requestedFieldLabels: string[];
+    requestedAt: string | null;
+  } | null;
+  timeline: Array<{
+    id: string;
+    type: string;
+    actorType: "merchant" | "platform" | "system";
+    message: string;
+    occurredAt: string | null;
+  }>;
 }
 
 interface StoreSubmissionResponse {
@@ -54,7 +100,7 @@ export function mapSubmission(value: unknown): StoreSubmission {
     id: stringField(dto, "id", "طلب المتجر"),
     storeName: stringField(dto, "storeName", "طلب المتجر"),
     businessType: stringField(dto, "businessType", "طلب المتجر"),
-    verificationStatus: enumField(dto, "verificationStatus", ["pending", "approved", "rejected", "suspended"] as const, "طلب المتجر"),
+    verificationStatus: enumField(dto, "verificationStatus", ["pending", "changes_requested", "approved", "rejected", "suspended"] as const, "طلب المتجر"),
     provisioningStatus: enumField(dto, "provisioningStatus", ["not_started", "queued", "provisioning", "retrying", "active", "failed"] as const, "طلب المتجر"),
     publicationStatus: enumField(dto, "publicationStatus", ["requested", "published", "unpublished", "rejected"] as const, "طلب المتجر"),
     reviewFeedback: nullableStringField(dto, "reviewFeedback", "طلب المتجر"),
@@ -91,6 +137,7 @@ export function mapSubmission(value: unknown): StoreSubmission {
     createdAt: nullableStringField(dto, "createdAt", "طلب المتجر"),
     activeAt: nullableStringField(dto, "activeAt", "طلب المتجر"),
     publishedAt: nullableStringField(dto, "publishedAt", "طلب المتجر"),
+    application: dto.application === null ? null : mapApplication(dto.application),
   };
 }
 
@@ -126,6 +173,7 @@ export interface StoreDraft {
   config: StoreConfig;
   savedAt: string | null;
   submittedAt: string | null;
+  application?: StoreApplicationDossier;
 }
 
 export interface StoreDraftInput {
@@ -174,6 +222,78 @@ function mapDraft(value: unknown): StoreDraft {
     config: sanitizeCheckoutConfig(record(dto.config, "إعدادات مسودة المتجر") as unknown as StoreConfig),
     savedAt: nullableStringField(dto, "savedAt", "مسودة المتجر"),
     submittedAt: nullableStringField(dto, "submittedAt", "مسودة المتجر"),
+    application: mapApplication(dto.application),
+  };
+}
+
+function nullableNumberField(dto: Record<string, unknown>, key: string, context: string): number | null {
+  if (dto[key] === null) return null;
+  const value = dto[key];
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    throw new ApiError(`استجابة ${context} لا تحتوي ${key} صالحًا.`, "unexpected", 200);
+  }
+  return value;
+}
+
+function mapApplication(value: unknown): StoreApplicationDossier {
+  const dto = record(value, "ملف طلب المتجر");
+  if (!Array.isArray(dto.requirements) || !Array.isArray(dto.timeline)) {
+    throw new ApiError("استجابة ملف طلب المتجر غير مكتملة.", "unexpected", 200);
+  }
+  const correctionValue = dto.correctionRequest;
+
+  return {
+    draftId: stringField(dto, "draftId", "ملف طلب المتجر"),
+    tenantId: nullableStringField(dto, "tenantId", "ملف طلب المتجر"),
+    draftRevision: numberField(dto, "draftRevision", "ملف طلب المتجر"),
+    ready: booleanField(dto, "ready", "ملف طلب المتجر"),
+    blockers: stringArrayField(dto, "blockers", "ملف طلب المتجر"),
+    requirements: dto.requirements.map((value) => {
+      const requirement = record(value, "متطلب طلب المتجر");
+      const evidenceValue = requirement.evidence;
+      return {
+        key: stringField(requirement, "key", "متطلب طلب المتجر"),
+        label: stringField(requirement, "label", "متطلب طلب المتجر"),
+        description: stringField(requirement, "description", "متطلب طلب المتجر"),
+        uploadRequired: booleanField(requirement, "uploadRequired", "متطلب طلب المتجر"),
+        allowExemption: booleanField(requirement, "allowExemption", "متطلب طلب المتجر"),
+        resolved: booleanField(requirement, "resolved", "متطلب طلب المتجر"),
+        evidence: evidenceValue === null ? null : (() => {
+          const evidence = record(evidenceValue, "وثيقة طلب المتجر");
+          return {
+            id: stringField(evidence, "id", "وثيقة طلب المتجر"),
+            resolution: enumField(evidence, "resolution", ["uploaded", "exempted"] as const, "وثيقة طلب المتجر"),
+            reviewStatus: enumField(evidence, "reviewStatus", ["pending", "accepted", "rejected"] as const, "وثيقة طلب المتجر"),
+            originalName: nullableStringField(evidence, "originalName", "وثيقة طلب المتجر"),
+            mimeType: nullableStringField(evidence, "mimeType", "وثيقة طلب المتجر"),
+            byteSize: nullableNumberField(evidence, "byteSize", "وثيقة طلب المتجر"),
+            exemptionReason: nullableStringField(evidence, "exemptionReason", "وثيقة طلب المتجر"),
+            uploadedAt: nullableStringField(evidence, "uploadedAt", "وثيقة طلب المتجر"),
+            downloadUrl: nullableStringField(evidence, "downloadUrl", "وثيقة طلب المتجر"),
+          };
+        })(),
+      };
+    }),
+    correctionRequest: correctionValue === null ? null : (() => {
+      const correction = record(correctionValue, "طلب استكمال المتجر");
+      return {
+        id: stringField(correction, "id", "طلب استكمال المتجر"),
+        reason: stringField(correction, "reason", "طلب استكمال المتجر"),
+        requestedFields: stringArrayField(correction, "requestedFields", "طلب استكمال المتجر"),
+        requestedFieldLabels: stringArrayField(correction, "requestedFieldLabels", "طلب استكمال المتجر"),
+        requestedAt: nullableStringField(correction, "requestedAt", "طلب استكمال المتجر"),
+      };
+    })(),
+    timeline: dto.timeline.map((value) => {
+      const event = record(value, "سجل طلب المتجر");
+      return {
+        id: stringField(event, "id", "سجل طلب المتجر"),
+        type: stringField(event, "type", "سجل طلب المتجر"),
+        actorType: enumField(event, "actorType", ["merchant", "platform", "system"] as const, "سجل طلب المتجر"),
+        message: stringField(event, "message", "سجل طلب المتجر"),
+        occurredAt: nullableStringField(event, "occurredAt", "سجل طلب المتجر"),
+      };
+    }),
   };
 }
 
@@ -310,6 +430,35 @@ export const provisioningApi = {
     const response = await apiClient.request<{ data: unknown }>("/api/merchant/store-draft", { signal });
     const envelope = record(response, "استجابة المسودة الحالية");
     return envelope.data === null ? null : mapDraft(envelope.data);
+  },
+
+  async application(draftId: string, signal?: AbortSignal): Promise<StoreApplicationDossier> {
+    const response = await apiClient.request<{ data: unknown }>(`/api/merchant/store-drafts/${encodeURIComponent(draftId)}/application`, { signal });
+    return mapApplication(record(response, "ملف طلب المتجر").data);
+  },
+
+  async uploadApplicationEvidence(draftId: string, requirementKey: string, expectedRevision: number, file: File, signal?: AbortSignal): Promise<StoreApplicationDossier> {
+    const idempotencyKey = randomUuid();
+    const body = new FormData();
+    body.append("expectedRevision", String(expectedRevision));
+    body.append("document", file);
+    const response = await apiClient.request<{ data: unknown }>(`/api/merchant/store-drafts/${encodeURIComponent(draftId)}/evidence/${encodeURIComponent(requirementKey)}`, {
+      method: "POST",
+      body,
+      headers: { "Idempotency-Key": idempotencyKey },
+      retrySafety: "idempotent",
+      signal,
+    });
+    return mapApplication(record(response, "رفع وثيقة طلب المتجر").data);
+  },
+
+  async exemptApplicationRequirement(draftId: string, requirementKey: string, expectedRevision: number, reason: string, signal?: AbortSignal): Promise<StoreApplicationDossier> {
+    const response = await apiClient.request<{ data: unknown }>(`/api/merchant/store-drafts/${encodeURIComponent(draftId)}/exemptions/${encodeURIComponent(requirementKey)}`, {
+      method: "PUT",
+      body: { expectedRevision, reason },
+      signal,
+    });
+    return mapApplication(record(response, "إعفاء متطلب طلب المتجر").data);
   },
 
   async recoverCommittedSubmission(ownerId: string, signal?: AbortSignal): Promise<StoreSubmission | null> {

@@ -3,6 +3,17 @@ import { mapSubmission, provisioningApi, scrubLegacyPendingSubmission } from "./
 import { apiClient } from "./apiClient";
 import { ELEGANT_PRESET } from "../types";
 
+const readyApplication = (draftId: string, draftRevision: number, tenantId: string | null = null) => ({
+  draftId,
+  tenantId,
+  draftRevision,
+  ready: true,
+  blockers: [],
+  requirements: [],
+  correctionRequest: null,
+  timeline: [],
+});
+
 afterEach(() => {
   apiClient.clearCsrfToken();
   vi.unstubAllGlobals();
@@ -60,6 +71,7 @@ describe("provisioningApi", () => {
         plan: { key: "starter", name: "Starter", activationMode: "automatic" },
         subscriptionStatus: "active",
         publicationBlockers: ["review_not_approved", "provisioning_not_ready"],
+        application: readyApplication("draft-one", 4, "tenant-1"),
         createdAt: "2026-08-14T00:00:00Z",
         activeAt: null,
         publishedAt: null,
@@ -226,6 +238,7 @@ describe("provisioningApi", () => {
         onboardingReadiness: { business: true, design: true, review: true, blockers: [] },
         nextRequiredStep: "submit",
         config: legacyConfig,
+        application: readyApplication("draft-1", 3),
         savedAt: "2026-08-19T12:00:00Z",
         submittedAt: null,
       },
@@ -292,6 +305,7 @@ describe("provisioningApi", () => {
         plan: { key: "pro", name: "Pro", activationMode: "manual" },
         subscriptionStatus: "pending_activation",
         publicationBlockers: ["review_not_approved"],
+        application: readyApplication("draft-two", 6, "tenant-2"),
         createdAt: "2026-08-15T00:00:00Z",
         activeAt: null,
         publishedAt: null,
@@ -368,6 +382,7 @@ describe("provisioningApi", () => {
       plan: { key: "starter", name: "Starter", activationMode: "automatic" },
       subscriptionStatus: "active",
       publicationBlockers: ["review_not_approved"],
+      application: readyApplication("draft-recovery", 4, "tenant-recovery"),
       createdAt: null,
       activeAt: null,
       publishedAt: null,

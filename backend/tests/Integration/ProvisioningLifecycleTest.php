@@ -81,7 +81,7 @@ class ProvisioningLifecycleTest extends TestCase
     {
         $merchant = $this->createUser('merchant-submit@example.test');
         $key = (string) Str::uuid();
-        $payload = $this->submissionPayload('atomic-store');
+        $payload = $this->readyStoreSubmissionPayload($merchant, $this->submissionPayload('atomic-store'));
 
         $response = $this->actingAs($merchant)
             ->withHeader('Idempotency-Key', $key)
@@ -436,9 +436,10 @@ class ProvisioningLifecycleTest extends TestCase
     private function submitStore(string $label): array
     {
         $merchant = $this->createUser($label.'@example.test');
+        $payload = $this->readyStoreSubmissionPayload($merchant, $this->submissionPayload($label));
         $response = $this->actingAs($merchant)
             ->withHeader('Idempotency-Key', (string) Str::uuid())
-            ->postJson('/api/register-store', $this->submissionPayload($label))
+            ->postJson('/api/register-store', $payload)
             ->assertCreated();
         $tenant = Tenant::query()->findOrFail((string) $response->json('data.id'));
         $this->tenantIds[] = $tenant->id;

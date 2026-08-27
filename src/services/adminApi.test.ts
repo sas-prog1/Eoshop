@@ -77,7 +77,7 @@ describe("adminApi", () => {
       generatedAt: "2026-08-21T12:00:00Z",
       stores: {
         total: 4,
-        verification: { pending: 1, approved: 2, rejected: 1, suspended: 0 },
+        verification: { pending: 1, changesRequested: 0, approved: 2, rejected: 1, suspended: 0 },
         provisioning: { notStarted: 1, queued: 0, provisioning: 0, retrying: 0, active: 2, failed: 1 },
         publication: { requested: 2, published: 1, unpublished: 1, rejected: 0 },
       },
@@ -102,7 +102,13 @@ describe("adminApi", () => {
     ), { status: 200 })));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(adminApi.overview()).resolves.toEqual(overview);
+    await expect(adminApi.overview()).resolves.toEqual({
+      ...overview,
+      stores: {
+        ...overview.stores,
+        verification: { pending: 1, changes_requested: 0, approved: 2, rejected: 1, suspended: 0 },
+      },
+    });
     const events = await adminApi.listAuditLogs({ search: "verification", page: 1 });
     expect(events.items).toEqual([audit]);
     expect(events.items[0]).not.toHaveProperty("oldValues");

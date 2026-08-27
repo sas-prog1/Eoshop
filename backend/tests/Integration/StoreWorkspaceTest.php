@@ -99,6 +99,7 @@ class StoreWorkspaceTest extends TestCase
         foreach ($this->userIds as $userId) {
             $central->table('role_user')->where('user_id', $userId)->delete();
             $central->table('admin_audit_logs')->where('actor_user_id', $userId)->delete();
+            $central->table('store_drafts')->where('owner_user_id', $userId)->delete();
             $central->table('users')->where('id', $userId)->delete();
         }
         foreach ($this->roleIds as $roleId) {
@@ -1750,17 +1751,18 @@ class StoreWorkspaceTest extends TestCase
     {
         $merchant = $this->user('workspace-submit@example.test');
         $products = array_map(fn (int $index): array => $this->product("NEW-{$index}"), range(1, 11));
+        $payload = $this->readyStoreSubmissionPayload($merchant, [
+            'storeName' => 'Rejected before provisioning',
+            'businessType' => 'retail',
+            'themeStyle' => 'elegant',
+            'handle' => 'rejected-workspace',
+            'planKey' => 'starter',
+            'config' => $this->config('Rejected before provisioning', $products),
+        ]);
 
         $this->actingAs($merchant)
             ->withHeader('Idempotency-Key', (string) Str::uuid())
-            ->postJson('/api/register-store', [
-                'storeName' => 'Rejected before provisioning',
-                'businessType' => 'retail',
-                'themeStyle' => 'elegant',
-                'handle' => 'rejected-workspace',
-                'planKey' => 'starter',
-                'config' => $this->config('Rejected before provisioning', $products),
-            ])
+            ->postJson('/api/register-store', $payload)
             ->assertUnprocessable()
             ->assertJsonValidationErrors('config.products');
 

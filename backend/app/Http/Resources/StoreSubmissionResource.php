@@ -7,6 +7,7 @@ use App\Models\Domain;
 use App\Models\PublicationRequest;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\StoreApplicationService;
 use App\Support\PublicationReadiness;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
@@ -32,9 +33,12 @@ class StoreSubmissionResource extends JsonResource
             'verificationStatus' => $this->getAttribute('verification_status'),
             'provisioningStatus' => $this->getAttribute('provisioning_status'),
             'publicationStatus' => $this->getAttribute('publication_status'),
-            'reviewFeedback' => $this->getAttribute('verification_status') === 'rejected'
+            'reviewFeedback' => in_array($this->getAttribute('verification_status'), ['changes_requested', 'rejected'], true)
                 ? $this->getAttribute('rejection_reason')
                 : null,
+            'application' => $this->whenLoaded('draft', fn (): ?array => $this->draft === null
+                ? null
+                : app(StoreApplicationService::class)->summary($this->draft)),
             'capabilities' => [
                 'workspaceManage' => $actor instanceof User && $actor->can('updateStoreWorkspace', $this->resource),
                 'catalogManage' => $actor instanceof User && $actor->can('updateProductCatalog', $this->resource),

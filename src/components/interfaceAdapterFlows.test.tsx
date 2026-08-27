@@ -513,7 +513,7 @@ describe("adapter-backed interface flows", () => {
       generatedAt: "2026-08-21T12:00:00Z",
       stores: {
         total: 1,
-        verification: { pending: 1, approved: 0, rejected: 0, suspended: 0 },
+        verification: { pending: 1, changes_requested: 0, approved: 0, rejected: 0, suspended: 0 },
         provisioning: { notStarted: 0, queued: 0, provisioning: 0, retrying: 0, active: 1, failed: 0 },
         publication: { requested: 1, published: 0, unpublished: 0, rejected: 0 },
       },
@@ -541,7 +541,7 @@ describe("adapter-backed interface flows", () => {
     await screen.findByText(platformStore.storeName);
     expect(screen.queryByRole("button", { name: /نشر/ })).toBeNull();
     await user.click(screen.getByRole("button", { name: "قبول" }));
-    await waitFor(() => expect(updateStatus).toHaveBeenCalledWith(platformStore.id, "approved", undefined));
+    await waitFor(() => expect(updateStatus).toHaveBeenCalledWith(platformStore.id, "approved", undefined, undefined));
   });
 
   it("calls the assistant once and renders its server-backed proposal", async () => {

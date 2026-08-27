@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, Clock3, Globe, RefreshCw, ShieldCheck, X, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock3, FileText, Globe, RefreshCw, ShieldCheck, UploadCloud, X, XCircle } from "lucide-react";
 import { useUiAdapters } from "../adapters/UiAdaptersContext";
-import { isUiError, uiErrorMessage, type StoreDraft, type StorePlan, type StoreSubmission } from "../adapters/uiAdapters";
+import { isUiError, uiErrorMessage, type StoreApplicationDossier, type StoreDraft, type StorePlan, type StoreSubmission } from "../adapters/uiAdapters";
 
 interface DomainSetupModalProps {
   isOpen: boolean;
@@ -55,7 +55,10 @@ export default function DomainSetupModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [draftConflict, setDraftConflict] = useState(false);
-  const [pendingLifecycleDraft, setPendingLifecycleDraft] = useState<StoreDraft | null>(null);
+  const [preparedDraft, setPreparedDraft] = useState<StoreDraft | null>(null);
+  const [application, setApplication] = useState<StoreApplicationDossier | null>(null);
+  const [evidenceBusy, setEvidenceBusy] = useState<string | null>(null);
+  const [exemptionReasons, setExemptionReasons] = useState<Record<string, string>>({});
   const plansRequest = useRef(0);
   const availabilityRequest = useRef(0);
 
@@ -91,16 +94,19 @@ export default function DomainSetupModal({
   useEffect(() => {
     if (!isOpen) return;
     setDraftConflict(false);
-    setPendingLifecycleDraft(null);
+    setPreparedDraft(null);
+    setApplication(draft?.application ?? null);
+    setEvidenceBusy(null);
+    setExemptionReasons({});
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || pendingLifecycleDraft) return;
+    if (!isOpen || preparedDraft) return;
     if (draft) {
       setHandle(draft.handle ?? "");
       if (draft.planKey) setSelectedPlan(draft.planKey);
     }
-  }, [isOpen, draft?.id, draft?.revision, pendingLifecycleDraft]);
+  }, [isOpen, draft?.id, draft?.revision, preparedDraft]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -142,7 +148,7 @@ export default function DomainSetupModal({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!pendingLifecycleDraft && (!plan || !availability?.available)) {
+    if (!preparedDraft && (!plan || !availability?.available)) {
       setError("اختر باقة وعنوان متجر متاحًا قبل إرسال الطلب.");
       return;
     }
@@ -150,7 +156,8 @@ export default function DomainSetupModal({
     setError("");
     setSubmitting(true);
     try {
-      const savedDraft = pendingLifecycleDraft ?? (draft?.tenantId
+      if (!preparedDraft) {
+        const savedDraft = draft?.tenantId
         ? await provisioning.saveCorrection(draft.tenantId, {
             expectedRevision: draft.revision,
             storeName,
@@ -168,35 +175,81 @@ export default function DomainSetupModal({
             handle: handle.trim().toLowerCase(),
             planKey: plan!.key,
             config,
-          }));
-      if (!pendingLifecycleDraft) {
+          });
         onDraftChanged?.(savedDraft);
-        setPendingLifecycleDraft(savedDraft);
+        setPreparedDraft(savedDraft);
+        setApplication(savedDraft.application ?? null);
+        return;
       }
-      const response = savedDraft.tenantId
-        ? await provisioning.resubmit(savedDraft.tenantId, savedDraft.revision, ownerId)
+      if (!application?.ready) {
+        setError("أكمل الوثائق المطلوبة أو سجّل الإعفاء المسموح قبل إرسال الطلب.");
+        return;
+      }
+      const response = preparedDraft.tenantId
+        ? await provisioning.resubmit(preparedDraft.tenantId, preparedDraft.revision, ownerId)
         : await provisioning.submit({
-          storeName: savedDraft.storeName,
-          businessType: savedDraft.businessType,
-          themeStyle: savedDraft.themeStyle,
-          handle: savedDraft.handle!,
-          planKey: savedDraft.planKey!,
-          config: savedDraft.config,
-          draftId: savedDraft.id,
-          expectedDraftRevision: savedDraft.revision,
+          storeName: preparedDraft.storeName,
+          businessType: preparedDraft.businessType,
+          themeStyle: preparedDraft.themeStyle,
+          handle: preparedDraft.handle!,
+          planKey: preparedDraft.planKey!,
+          config: preparedDraft.config,
+          draftId: preparedDraft.id,
+          expectedDraftRevision: preparedDraft.revision,
         }, ownerId);
-      setPendingLifecycleDraft(null);
+      setPreparedDraft(null);
       onSubmitted?.(response.data);
       onClose();
     } catch (caught) {
       setError(uiErrorMessage(caught, "تعذر إرسال طلب المتجر. حاول مرة أخرى."));
       if (isUiError(caught, "conflict")) {
         setAvailability(null);
-        setPendingLifecycleDraft(null);
+        setPreparedDraft(null);
         setDraftConflict(true);
       }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const applyApplication = (next: StoreApplicationDossier) => {
+    setApplication(next);
+    setPreparedDraft((current) => {
+      if (!current) return current;
+      const updated = { ...current, revision: next.draftRevision, application: next };
+      onDraftChanged?.(updated);
+      return updated;
+    });
+  };
+
+  const uploadEvidence = async (requirementKey: string, file: File) => {
+    if (!preparedDraft) return;
+    setError("");
+    setEvidenceBusy(requirementKey);
+    try {
+      applyApplication(await provisioning.uploadApplicationEvidence(preparedDraft.id, requirementKey, preparedDraft.revision, file));
+    } catch (caught) {
+      setError(uiErrorMessage(caught, "تعذر رفع المستند. حاول مرة أخرى."));
+    } finally {
+      setEvidenceBusy(null);
+    }
+  };
+
+  const declareExemption = async (requirementKey: string) => {
+    if (!preparedDraft) return;
+    const reason = exemptionReasons[requirementKey]?.trim() ?? "";
+    if (reason.length < 10) {
+      setError("اكتب سبب إعفاء واضحًا من 10 أحرف على الأقل.");
+      return;
+    }
+    setError("");
+    setEvidenceBusy(requirementKey);
+    try {
+      applyApplication(await provisioning.exemptApplicationRequirement(preparedDraft.id, requirementKey, preparedDraft.revision, reason));
+    } catch (caught) {
+      setError(uiErrorMessage(caught, "تعذر تسجيل إفادة الإعفاء."));
+    } finally {
+      setEvidenceBusy(null);
     }
   };
 
@@ -216,7 +269,7 @@ export default function DomainSetupModal({
 
         <form onSubmit={handleSubmit} className="space-y-6 p-6">
           {error && <div className="flex items-start justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700"><span className="flex items-start gap-2"><AlertCircle className="h-4 w-4 shrink-0" />{error}</span>{draftConflict && onReloadDraft && <button type="button" onClick={() => void onReloadDraft()} className="shrink-0 rounded-lg border border-rose-300 bg-white px-3 py-1.5">تحميل نسخة الخادم</button>}</div>}
-          {pendingLifecycleDraft && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-900">نتيجة الإرسال السابق غير مؤكدة. إعادة المحاولة ستستعيد العملية نفسها بالمفتاح والبيانات المحفوظة، ولن تحفظ المسودة مرة ثانية.</div>}
+          {preparedDraft && <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs font-bold leading-6 text-sky-900">تم حفظ العنوان والباقة في المسودة. أكمل ملف الوثائق أدناه، ثم راجع الإشارة الخضراء قبل الإرسال النهائي.</div>}
 
           <section>
             <label htmlFor="store-handle" className="mb-2 block text-sm font-black text-slate-900">عنوان المتجر داخل المنصة</label>
@@ -224,7 +277,7 @@ export default function DomainSetupModal({
               <input
                 id="store-handle"
                 value={handle}
-                disabled={pendingLifecycleDraft !== null}
+                disabled={preparedDraft !== null}
                 onChange={(event) => setHandle(event.target.value.replace(/[^A-Za-z0-9-]/g, "").toLowerCase())}
                 minLength={3}
                 maxLength={50}
@@ -255,7 +308,7 @@ export default function DomainSetupModal({
                   <button
                     key={item.key}
                     type="button"
-                    disabled={pendingLifecycleDraft !== null}
+                    disabled={preparedDraft !== null}
                     onClick={() => setSelectedPlan(item.key)}
                     className={`rounded-2xl border p-4 text-right transition ${selected ? "border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100" : "border-slate-200 bg-white hover:border-indigo-300"}`}
                   >
@@ -281,9 +334,77 @@ export default function DomainSetupModal({
             </div>
           )}
 
-          <button disabled={submitting || loadingPlans || (!pendingLifecycleDraft && (!availability?.available || !plan))} type="submit" className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-sky-600 to-indigo-700 px-5 py-4 text-sm font-black text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50">
+          {preparedDraft && application && (
+            <section className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h4 className="flex items-center gap-2 text-sm font-black text-slate-950"><FileText className="h-5 w-5 text-indigo-600" /> وثائق طلب المتجر</h4>
+                  <p className="mt-1 text-xs leading-6 text-slate-600">المتطلبات يحددها الخادم حسب نوع النشاط. الملفات خاصة، ولا تُعرض في رابط المتجر العام.</p>
+                </div>
+                <span className={`rounded-full border px-3 py-1 text-xs font-black ${application.ready ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+                  {application.ready ? "ملف الطلب مكتمل" : `${application.blockers.length} متطلب غير مكتمل`}
+                </span>
+              </div>
+
+              {application.correctionRequest && (
+                <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-950">
+                  <p className="font-black">طلب استكمال من إدارة المنصة</p>
+                  <p className="mt-2 leading-6">{application.correctionRequest.reason}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">{application.correctionRequest.requestedFieldLabels.map((label) => <span key={label} className="rounded-full bg-white px-3 py-1 font-bold">{label}</span>)}</div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {application.requirements.map((requirement) => (
+                  <article key={requirement.key} className={`rounded-2xl border bg-white p-4 ${requirement.resolved ? "border-emerald-200" : "border-slate-200"}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h5 className="flex items-center gap-2 text-sm font-black text-slate-900">{requirement.resolved && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}{requirement.label}</h5>
+                        <p className="mt-1 text-xs leading-6 text-slate-500">{requirement.description}</p>
+                        {requirement.evidence && <p className="mt-2 text-[11px] font-bold text-emerald-700">{requirement.evidence.resolution === "uploaded" ? `مرفوع: ${requirement.evidence.originalName ?? "مستند"}` : "تم تسجيل إفادة إعفاء صريحة"}</p>}
+                      </div>
+                      <label className={`inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white ${evidenceBusy ? "pointer-events-none opacity-50" : ""}`}>
+                        {evidenceBusy === requirement.key ? <RefreshCw className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                        {requirement.evidence?.resolution === "uploaded" ? "استبدال المستند" : "رفع المستند"}
+                        <input
+                          type="file"
+                          accept="application/pdf,image/jpeg,image/png"
+                          className="sr-only"
+                          disabled={evidenceBusy !== null}
+                          onChange={(event) => {
+                            const file = event.currentTarget.files?.[0];
+                            event.currentTarget.value = "";
+                            if (file) void uploadEvidence(requirement.key, file);
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {requirement.allowExemption && (
+                      <div className="mt-3 grid gap-2 border-t border-slate-100 pt-3 sm:grid-cols-[1fr_auto]">
+                        <input
+                          value={exemptionReasons[requirement.key] ?? requirement.evidence?.exemptionReason ?? ""}
+                          onChange={(event) => setExemptionReasons((current) => ({ ...current, [requirement.key]: event.target.value }))}
+                          placeholder="سبب عدم توفر المستند حاليًا (إفادة صريحة)"
+                          maxLength={1000}
+                          className="rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-amber-500"
+                        />
+                        <button type="button" disabled={evidenceBusy !== null} onClick={() => void declareExemption(requirement.key)} className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900 disabled:opacity-50">تسجيل الإعفاء</button>
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </div>
+
+              <div className="rounded-2xl bg-white p-4">
+                <h5 className="text-xs font-black text-slate-900">سجل الطلب</h5>
+                <ol className="mt-3 space-y-2">{application.timeline.slice(-5).reverse().map((item) => <li key={item.id} className="flex items-start gap-2 text-[11px] leading-5 text-slate-600"><Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" /><span>{item.message}</span></li>)}</ol>
+              </div>
+            </section>
+          )}
+
+          <button disabled={submitting || evidenceBusy !== null || loadingPlans || (!preparedDraft && (!availability?.available || !plan)) || Boolean(preparedDraft && !application?.ready)} type="submit" className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-sky-600 to-indigo-700 px-5 py-4 text-sm font-black text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50">
             {submitting && <RefreshCw className="h-5 w-5 animate-spin" />}
-            {submitting ? "جارٍ إرسال الطلب بأمان…" : "حجز العنوان وإرسال طلب المتجر"}
+            {submitting ? "جارٍ حفظ العملية بأمان…" : preparedDraft ? "إرسال ملف الطلب للمراجعة" : "حفظ العنوان والباقة والانتقال للوثائق"}
           </button>
         </form>
       </div>

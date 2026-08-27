@@ -37,6 +37,17 @@ const starterPlan: StorePlan = {
   features: ["platform_subdomain"],
 };
 
+const readyApplication = (draftId: string, draftRevision: number, tenantId: string | null = null) => ({
+  draftId,
+  tenantId,
+  draftRevision,
+  ready: true,
+  blockers: [],
+  requirements: [],
+  correctionRequest: null,
+  timeline: [],
+});
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -141,6 +152,7 @@ describe("current interface behavior", () => {
       handle: "my-shop",
       planKey: "starter",
       config: { storeName: "متجري" },
+      application: readyApplication("draft-1", 1),
       savedAt: "2026-08-19T12:00:00Z",
       submittedAt: null,
     });
@@ -168,7 +180,8 @@ describe("current interface behavior", () => {
     await user.type(screen.getByLabelText("عنوان المتجر داخل المنصة"), "my-shop");
     await waitFor(() => expect(availability).toHaveBeenCalledWith("my-shop", expect.any(AbortSignal)), { timeout: 1500 });
     expect(await screen.findByText(/my-shop\.eoshop\.local متاح/)).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "حجز العنوان وإرسال طلب المتجر" }));
+    await user.click(screen.getByRole("button", { name: "حفظ العنوان والباقة والانتقال للوثائق" }));
+    await user.click(await screen.findByRole("button", { name: "إرسال ملف الطلب للمراجعة" }));
 
     await waitFor(() => expect(submit).toHaveBeenCalledTimes(1));
     expect(saveDraft).toHaveBeenCalledWith(expect.objectContaining({
@@ -194,6 +207,7 @@ describe("current interface behavior", () => {
       id: "draft-replay", tenantId: null, status: "draft" as const, revision: 1,
       storeName: "متجر الاستعادة", businessType: "تجزئة", themeStyle: "elegant" as const,
       handle: "replay-shop", planKey: "starter", config: { storeName: "متجر الاستعادة" },
+      application: readyApplication("draft-replay", 1),
       savedAt: "2026-08-19T12:00:00Z", submittedAt: null,
     };
     const submission = {
@@ -208,7 +222,7 @@ describe("current interface behavior", () => {
     };
     const saveDraft = vi.fn().mockResolvedValue(savedDraft);
     const submit = vi.fn()
-      .mockRejectedValueOnce(new UiAdapterError("ambiguous", "network"))
+      .mockRejectedValueOnce(new UiAdapterError("نتيجة الإرسال السابق غير مؤكدة", "network"))
       .mockResolvedValueOnce({ data: submission, meta: { replayed: true } });
     const user = userEvent.setup();
 
@@ -224,9 +238,10 @@ describe("current interface behavior", () => {
     await screen.findByText("البداية");
     await user.type(screen.getByLabelText("عنوان المتجر داخل المنصة"), "replay-shop");
     await screen.findByText(/replay-shop\.eoshop\.local متاح/, {}, { timeout: 1500 });
-    await user.click(screen.getByRole("button", { name: "حجز العنوان وإرسال طلب المتجر" }));
+    await user.click(screen.getByRole("button", { name: "حفظ العنوان والباقة والانتقال للوثائق" }));
+    await user.click(await screen.findByRole("button", { name: "إرسال ملف الطلب للمراجعة" }));
     expect(await screen.findByText(/نتيجة الإرسال السابق غير مؤكدة/)).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "حجز العنوان وإرسال طلب المتجر" }));
+    await user.click(screen.getByRole("button", { name: "إرسال ملف الطلب للمراجعة" }));
 
     await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
     expect(saveDraft).toHaveBeenCalledTimes(1);
@@ -248,7 +263,7 @@ describe("current interface behavior", () => {
     await screen.findByText("البداية");
     await user.type(screen.getByLabelText("عنوان المتجر داخل المنصة"), "conflict-shop");
     await screen.findByText(/conflict-shop\.eoshop\.local متاح/, {}, { timeout: 1500 });
-    await user.click(screen.getByRole("button", { name: "حجز العنوان وإرسال طلب المتجر" }));
+    await user.click(screen.getByRole("button", { name: "حفظ العنوان والباقة والانتقال للوثائق" }));
     await user.click(await screen.findByRole("button", { name: "تحميل نسخة الخادم" }));
     expect(reloadDraft).toHaveBeenCalledTimes(1);
   });
@@ -260,11 +275,12 @@ describe("current interface behavior", () => {
       id: "draft-correction", tenantId: "tenant-correction", status: "correction_required" as const, revision: 4,
       storeName: "متجر مصحح", businessType: "تجزئة", themeStyle: "elegant" as const,
       handle: "corrected-shop", planKey: "starter", config: { storeName: "متجر مصحح" },
+      application: readyApplication("draft-correction", 4, "tenant-correction"),
       savedAt: "2026-08-19T12:00:00Z", submittedAt: "2026-08-18T12:00:00Z",
     };
     const saveCorrection = vi.fn().mockResolvedValue(correction);
     const resubmit = vi.fn()
-      .mockRejectedValueOnce(new UiAdapterError("ambiguous", "network"))
+      .mockRejectedValueOnce(new UiAdapterError("نتيجة الإرسال السابق غير مؤكدة", "network"))
       .mockResolvedValueOnce({ data: {
         id: "tenant-correction", storeName: correction.storeName, businessType: correction.businessType,
         verificationStatus: "pending", provisioningStatus: "not_started", publicationStatus: "requested", reviewFeedback: null,
@@ -285,9 +301,10 @@ describe("current interface behavior", () => {
     );
 
     await screen.findByText(/corrected-shop\.eoshop\.local متاح/, {}, { timeout: 1500 });
-    await user.click(screen.getByRole("button", { name: "حجز العنوان وإرسال طلب المتجر" }));
+    await user.click(screen.getByRole("button", { name: "حفظ العنوان والباقة والانتقال للوثائق" }));
+    await user.click(await screen.findByRole("button", { name: "إرسال ملف الطلب للمراجعة" }));
     expect(await screen.findByText(/نتيجة الإرسال السابق غير مؤكدة/)).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "حجز العنوان وإرسال طلب المتجر" }));
+    await user.click(screen.getByRole("button", { name: "إرسال ملف الطلب للمراجعة" }));
 
     await waitFor(() => expect(resubmit).toHaveBeenCalledTimes(2));
     expect(saveCorrection).toHaveBeenCalledTimes(1);

@@ -31,6 +31,7 @@
 - [WP 5.4 — Merchant portal and store lifecycle](work-packages/WP-5.4-merchant-portal-lifecycle.md)
 - [WP 5.5 — Server-owned draft, resubmission and merchant publication](work-packages/WP-5.5-store-draft-resubmission-publication.md)
 - [WP 5.22 — Merchant launch console](work-packages/WP-5.22-merchant-launch-console.md)
+- [WP 5.23 — Store application dossier, evidence and correction](work-packages/WP-5.23-store-application-dossier.md)
 
 ## Architecture decisions
 
@@ -53,6 +54,7 @@
 - [ADR 0016 — Merchant and platform product shells](decisions/ADR-0016-merchant-and-platform-product-shells.md)
 - [ADR 0017 — Server-owned draft, resubmission and merchant publication](decisions/ADR-0017-server-owned-draft-resubmission-merchant-publication.md)
 - [ADR 0034 — Canonical merchant launch console](decisions/ADR-0034-canonical-merchant-launch-console.md)
+- [ADR 0035 — Server-owned store application dossier](decisions/ADR-0035-server-owned-store-application-dossier.md)
 
 ## Evidence
 
@@ -76,6 +78,7 @@
 - [WP 5.2 verification — 2026-08-18](evidence/WP-5.2/verification.md)
 - [WP 5.3 verification — 2026-08-19](evidence/WP-5.3/verification.md)
 - [WP 5.22 verification — 2026-08-27](evidence/WP-5.22/verification.md)
+- [WP 5.23 verification — 2026-08-27](evidence/WP-5.23/verification.md)
 
 ## QA handoff
 

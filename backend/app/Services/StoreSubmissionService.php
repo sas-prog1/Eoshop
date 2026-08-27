@@ -38,6 +38,7 @@ class StoreSubmissionService
         private readonly DomainReservationService $domainReservations,
         private readonly SubscriptionService $subscriptions,
         private readonly PublicationService $publications,
+        private readonly StoreApplicationService $applications,
     ) {}
 
     /**
@@ -60,35 +61,33 @@ class StoreSubmissionService
                 if ($existing !== null) {
                     return $this->replay($existing, $fingerprint);
                 }
-                $draft = null;
-                if (isset($input['draftId'])) {
-                    $draft = StoreDraft::query()->whereKey($input['draftId'])->lockForUpdate()->firstOrFail();
-                    if ($draft->getAttribute('owner_user_id') !== $actor->getKey()
-                        || $draft->getAttribute('tenant_id') !== null
-                        || $draft->getAttribute('status') !== StoreDraftStatus::Draft
-                        || $draft->getAttribute('onboarding_stage') !== StoreOnboardingStage::Review
-                    ) {
-                        throw StoreDraftConflict::state();
-                    }
-                    if ((int) $draft->getAttribute('revision') !== (int) $input['expectedDraftRevision']) {
-                        throw StoreDraftConflict::revision();
-                    }
-                    $draftPayload = [
-                        'storeName' => $draft->getAttribute('store_name'),
-                        'businessType' => $draft->getAttribute('business_type'),
-                        'themeStyle' => $draft->getAttribute('theme_style'),
-                        'handle' => $draft->getAttribute('handle'),
-                        'planKey' => $draft->getAttribute('plan_key'),
-                        'config' => $draft->getAttribute('config'),
-                    ];
-                    $submittedPayload = collect($input)->only(array_keys($draftPayload))->all();
-                    if (! hash_equals(
-                        CanonicalPayload::fingerprint($draftPayload),
-                        CanonicalPayload::fingerprint($submittedPayload),
-                    )) {
-                        throw StoreDraftConflict::revision();
-                    }
+                $draft = StoreDraft::query()->whereKey($input['draftId'])->lockForUpdate()->firstOrFail();
+                if ($draft->getAttribute('owner_user_id') !== $actor->getKey()
+                    || $draft->getAttribute('tenant_id') !== null
+                    || $draft->getAttribute('status') !== StoreDraftStatus::Draft
+                    || $draft->getAttribute('onboarding_stage') !== StoreOnboardingStage::Review
+                ) {
+                    throw StoreDraftConflict::state();
                 }
+                if ((int) $draft->getAttribute('revision') !== (int) $input['expectedDraftRevision']) {
+                    throw StoreDraftConflict::revision();
+                }
+                $draftPayload = [
+                    'storeName' => $draft->getAttribute('store_name'),
+                    'businessType' => $draft->getAttribute('business_type'),
+                    'themeStyle' => $draft->getAttribute('theme_style'),
+                    'handle' => $draft->getAttribute('handle'),
+                    'planKey' => $draft->getAttribute('plan_key'),
+                    'config' => $draft->getAttribute('config'),
+                ];
+                $submittedPayload = collect($input)->only(array_keys($draftPayload))->all();
+                if (! hash_equals(
+                    CanonicalPayload::fingerprint($draftPayload),
+                    CanonicalPayload::fingerprint($submittedPayload),
+                )) {
+                    throw StoreDraftConflict::revision();
+                }
+                $this->applications->assertReady($draft);
                 $this->subscriptions->assertStoreQuota($actor);
                 $plan = Plan::query()->whereKey($input['planKey'])->where('is_active', true)->lockForUpdate()->firstOrFail();
                 $centralDraftConfig = StorefrontSectionLayout::withoutLayout((array) $input['config']);
@@ -118,34 +117,16 @@ class StoreSubmissionService
                 $subscription = $this->subscriptions->createForSubmission($tenant, $plan, $actor);
                 $publication = $this->publications->createRequest($tenant, $reservation, $subscription, $actor);
 
-                if ($draft === null) {
-                    $draft = StoreDraft::query()->create([
-                        'owner_user_id' => $actor->getKey(),
-                        'tenant_id' => $tenant->getKey(),
-                        'status' => StoreDraftStatus::Submitted,
-                        'revision' => 1,
-                        'onboarding_stage' => StoreOnboardingStage::Review,
-                        'onboarding_stage_baseline' => StoreOnboardingStage::Review,
-                        'store_name' => $tenant->getAttribute('store_name'),
-                        'business_type' => $tenant->getAttribute('business_type'),
-                        'theme_style' => $tenant->getAttribute('theme_style'),
-                        'handle' => $reservation->getAttribute('handle'),
-                        'plan_key' => $plan->getKey(),
-                        'config' => $centralDraftConfig,
-                        'saved_at' => now(),
-                        'submitted_at' => now(),
-                    ]);
-                } else {
-                    $draft->forceFill([
-                        'tenant_id' => $tenant->getKey(),
-                        'status' => StoreDraftStatus::Submitted,
-                        'onboarding_stage' => StoreOnboardingStage::Review,
-                        'config' => StorefrontSectionLayout::withoutLayout((array) $draft->getAttribute('config')),
-                        'revision' => ((int) $draft->getAttribute('revision')) + 1,
-                        'saved_at' => now(),
-                        'submitted_at' => now(),
-                    ])->save();
-                }
+                $draft->forceFill([
+                    'tenant_id' => $tenant->getKey(),
+                    'status' => StoreDraftStatus::Submitted,
+                    'onboarding_stage' => StoreOnboardingStage::Review,
+                    'config' => StorefrontSectionLayout::withoutLayout((array) $draft->getAttribute('config')),
+                    'revision' => ((int) $draft->getAttribute('revision')) + 1,
+                    'saved_at' => now(),
+                    'submitted_at' => now(),
+                ])->save();
+                $this->applications->linkSubmitted($draft, $tenant, $actor);
 
                 StoreSubmission::query()->create([
                     'tenant_id' => $tenant->getKey(),
@@ -168,6 +149,7 @@ class StoreSubmissionService
                             'name' => $actor->getAttribute('name'),
                             'email' => $actor->getAttribute('email'),
                         ],
+                        'applicationEvidence' => $this->applications->snapshot($draft),
                     ],
                     'initial_config_id' => (string) Str::uuid(),
                     'submitted_at' => now(),

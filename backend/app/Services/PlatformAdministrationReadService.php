@@ -23,7 +23,7 @@ class PlatformAdministrationReadService
      *     generatedAt: string,
      *     stores: array{
      *         total: int,
-     *         verification: array{pending: int, approved: int, rejected: int, suspended: int},
+     *         verification: array{pending: int, changesRequested: int, approved: int, rejected: int, suspended: int},
      *         provisioning: array{notStarted: int, queued: int, provisioning: int, retrying: int, active: int, failed: int},
      *         publication: array{requested: int, published: int, unpublished: int, rejected: int}
      *     },
@@ -56,7 +56,7 @@ class PlatformAdministrationReadService
      *     generatedAt: string,
      *     stores: array{
      *         total: int,
-     *         verification: array{pending: int, approved: int, rejected: int, suspended: int},
+     *         verification: array{pending: int, changesRequested: int, approved: int, rejected: int, suspended: int},
      *         provisioning: array{notStarted: int, queued: int, provisioning: int, retrying: int, active: int, failed: int},
      *         publication: array{requested: int, published: int, unpublished: int, rejected: int}
      *     },
@@ -69,6 +69,7 @@ class PlatformAdministrationReadService
         $counts = Tenant::query()->selectRaw(<<<'SQL'
                 COUNT(*) AS total,
                 COUNT(*) FILTER (WHERE verification_status = 'pending') AS verification_pending,
+                COUNT(*) FILTER (WHERE verification_status = 'changes_requested') AS verification_changes_requested,
                 COUNT(*) FILTER (WHERE verification_status = 'approved') AS verification_approved,
                 COUNT(*) FILTER (WHERE verification_status = 'rejected') AS verification_rejected,
                 COUNT(*) FILTER (WHERE verification_status = 'suspended') AS verification_suspended,
@@ -95,6 +96,7 @@ class PlatformAdministrationReadService
                 'total' => (int) $counts->getAttribute('total'),
                 'verification' => [
                     'pending' => (int) $counts->getAttribute('verification_pending'),
+                    'changesRequested' => (int) $counts->getAttribute('verification_changes_requested'),
                     'approved' => (int) $counts->getAttribute('verification_approved'),
                     'rejected' => (int) $counts->getAttribute('verification_rejected'),
                     'suspended' => (int) $counts->getAttribute('verification_suspended'),

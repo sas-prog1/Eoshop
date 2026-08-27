@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Enums\StoreOnboardingStage;
 use App\Models\StoreDraft;
+use App\Services\StoreApplicationService;
 use App\Services\StoreOnboardingReadiness;
 use App\Support\StorefrontSectionLayout;
 use Carbon\CarbonInterface;
@@ -42,6 +43,7 @@ class StoreDraftResource extends JsonResource
             'config' => StorefrontSectionLayout::withoutLayout((array) $this->getAttribute('config')),
             'savedAt' => $savedAt instanceof CarbonInterface ? $savedAt->toIso8601String() : null,
             'submittedAt' => $submittedAt instanceof CarbonInterface ? $submittedAt->toIso8601String() : null,
+            'application' => app(StoreApplicationService::class)->summary($this->resource),
         ];
     }
 }

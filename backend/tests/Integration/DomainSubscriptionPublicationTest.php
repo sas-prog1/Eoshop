@@ -69,6 +69,7 @@ class DomainSubscriptionPublicationTest extends TestCase
         foreach ($this->userIds as $userId) {
             $central->table('role_user')->where('user_id', $userId)->delete();
             $central->table('admin_audit_logs')->where('actor_user_id', $userId)->delete();
+            $central->table('store_drafts')->where('owner_user_id', $userId)->delete();
             $central->table('users')->where('id', $userId)->delete();
         }
 
@@ -110,7 +111,10 @@ class DomainSubscriptionPublicationTest extends TestCase
         $other = $this->createUser('catalog-other@example.test');
         $this->startBrowserSessionAs($other);
         $this->withHeader('Idempotency-Key', (string) Str::uuid())
-            ->postJson('/api/register-store', $this->payload('catalog-conflict', 'green-shop', 'starter'))
+            ->postJson('/api/register-store', $this->readyStoreSubmissionPayload(
+                $other,
+                $this->payload('catalog-conflict', 'green-shop', 'starter'),
+            ))
             ->assertStatus(409);
         $this->assertSame(1, Tenant::query()->where('store_name', 'like', 'Store catalog%')->count());
     }
@@ -532,8 +536,9 @@ class DomainSubscriptionPublicationTest extends TestCase
     private function submitStore(User $merchant, string $handle, string $plan, string $label): Tenant
     {
         $this->startBrowserSessionAs($merchant);
+        $payload = $this->readyStoreSubmissionPayload($merchant, $this->payload($label, $handle, $plan));
         $response = $this->withHeader('Idempotency-Key', (string) Str::uuid())
-            ->postJson('/api/register-store', $this->payload($label, $handle, $plan))
+            ->postJson('/api/register-store', $payload)
             ->assertCreated()
             ->assertJsonPath('data.requestedDomain', $handle.'.'.config('tenancy.tenant_base_domain'))
             ->assertJsonPath('data.plan.key', $plan);

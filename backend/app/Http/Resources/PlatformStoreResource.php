@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\PublicationRequest;
 use App\Models\Tenant;
+use App\Services\StoreApplicationService;
 use App\Support\PublicationReadiness;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
@@ -76,6 +77,9 @@ class PlatformStoreResource extends JsonResource
                     'lastErrorMessage' => $run->getAttribute('last_error_message'),
                 ];
             }),
+            'application' => $this->whenLoaded('draft', fn (): ?array => $this->draft === null
+                ? null
+                : app(StoreApplicationService::class)->summary($this->draft)),
         ];
     }
 }

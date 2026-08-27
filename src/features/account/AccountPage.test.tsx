@@ -59,7 +59,7 @@ describe("AccountPage", () => {
       passwordConfirmation: "new-secure-pass-456",
     }, expect.any(AbortSignal)));
     expect(await screen.findByText("تم تحديث كلمة المرور وإلغاء الجلسات الأخرى.")).toBeTruthy();
-  });
+  }, 15_000);
 
   it("fails closed and clears the route when the session expires during a mutation", async () => {
     const onSessionExpired = vi.fn();

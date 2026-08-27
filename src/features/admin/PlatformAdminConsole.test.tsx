@@ -14,7 +14,7 @@ const overview: PlatformOverview = {
   generatedAt: "2026-08-21T12:00:00Z",
   stores: {
     total: 2,
-    verification: { pending: 1, approved: 1, rejected: 0, suspended: 0 },
+    verification: { pending: 1, changes_requested: 0, approved: 1, rejected: 0, suspended: 0 },
     provisioning: { notStarted: 1, queued: 0, provisioning: 0, retrying: 0, active: 1, failed: 0 },
     publication: { requested: 1, published: 1, unpublished: 0, rejected: 0 },
   },

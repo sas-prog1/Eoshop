@@ -26,9 +26,15 @@ function store(overrides: Partial<StoreSubmission> = {}): StoreSubmission {
 }
 
 describe("deriveMerchantLifecycle", () => {
-  it("explains review, rejection and suspension without opening the builder", () => {
+  it("separates correctable requests from final rejection and suspension", () => {
     expect(deriveMerchantLifecycle(store())).toMatchObject({ stage: "review", actionOwner: "platform", canOpenBuilder: false });
     expect(deriveMerchantLifecycle(store({ verificationStatus: "rejected", reviewFeedback: "أكمل بيانات النشاط" }))).toMatchObject({
+      stage: "blocked",
+      explanation: "أكمل بيانات النشاط",
+      actionOwner: "platform",
+      canOpenBuilder: false,
+    });
+    expect(deriveMerchantLifecycle(store({ verificationStatus: "changes_requested", reviewFeedback: "أكمل بيانات النشاط" }))).toMatchObject({
       stage: "blocked",
       explanation: "أكمل بيانات النشاط",
       actionOwner: "merchant",
