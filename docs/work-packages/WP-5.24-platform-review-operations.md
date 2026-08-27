@@ -4,7 +4,7 @@
 |---|---|
 | Phase | Phase 5 — Launch product completion |
 | Work Package | WP 5.24 |
-| Status | Implemented; protected delivery pending |
+| Status | Complete; verified, merged and deployed to the retained Pilot |
 | Started | 2026-08-27 |
 | Branch | `codex/wp-5.24-platform-review-operations` |
 | Base | Protected `main` at `34195f1` |
@@ -68,14 +68,14 @@ Turn platform store review from a compact accept/reject card into an evidence-ba
 
 ### T4 — Pilot
 
-- [ ] Deploy merged backend and web images without replacing the retained Pilot database.
-- [ ] Verify the detail route, dossier controls, operations health and existing Pilot journey.
+- [x] Deploy merged backend and web images without replacing the retained Pilot database.
+- [x] Verify the detail route, dossier controls, operations health and existing Pilot journey.
 
 ### T5 — Delivery
 
-- [ ] Record implementation commit, PR and required CI.
-- [ ] Merge through protected `main` only after all four required checks pass.
-- [ ] Record merged Pilot evidence in a closeout PR.
+- [x] Record implementation commits, PR and required CI.
+- [x] Merge through protected `main` only after all four required checks pass.
+- [x] Record merged Pilot evidence in a closeout PR.
 
 ## Acceptance criteria
 
