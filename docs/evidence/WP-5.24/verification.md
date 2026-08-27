@@ -23,7 +23,7 @@
 ## Local gates
 
 - Backend quality: PASS; Pint on 294 files, Larastan on 254 files with zero errors and PHPUnit 3 tests / 6 assertions.
-- Complete isolated container integration: PASS; 165 tests / 1,827 assertions, migration rollback/reapply, cached routes, HTTP boundaries, worker and scheduler checks.
+- Complete isolated container integration: PASS; 167 tests / 1,855 assertions, migration rollback/reapply, cached routes, HTTP boundaries, worker and scheduler checks.
 - Frontend production build: PASS; TypeScript validation and Vite production bundle.
 - Frontend Vitest: PASS; 58 files / 317 tests, including the detailed-workspace route, strict API contract mapping, and frozen-dossier review behavior.
 

@@ -16,6 +16,7 @@ use App\Services\RoleAssignmentService;
 use App\Support\StoreOnboardingBaseline;
 use Database\Seeders\IdentitySeeder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Group;
@@ -46,10 +47,12 @@ class PlatformStoreReviewWorkspaceTest extends TestCase
         $uploaded = $evidence->firstWhere('requirement_key', 'owner_identity');
         Storage::disk('local')->put((string) $uploaded->path, 'private identity evidence');
 
+        Auth::forgetGuards();
+        $this->flushSession();
         $this->getJson("/api/admin/stores/{$tenant->id}")->assertUnauthorized();
-        $this->actingAs($owner)->getJson("/api/admin/stores/{$tenant->id}")->assertForbidden();
+        $this->asUser($owner)->getJson("/api/admin/stores/{$tenant->id}")->assertForbidden();
 
-        $detail = $this->actingAs($reviewer)
+        $detail = $this->asUser($reviewer)
             ->getJson("/api/admin/stores/{$tenant->id}")
             ->assertOk()
             ->assertJsonPath('data.applicationWorkspace.snapshot.handle', 'review-workspace')
@@ -60,29 +63,29 @@ class PlatformStoreReviewWorkspaceTest extends TestCase
 
         $downloadUrl = collect($detail->json('data.applicationWorkspace.dossier.requirements'))
             ->firstWhere('key', 'owner_identity')['evidence']['downloadUrl'];
-        $this->actingAs($reviewer)->get((string) $downloadUrl)
+        $this->asUser($reviewer)->get((string) $downloadUrl)
             ->assertOk()
             ->assertHeader('cache-control', 'no-store, private');
 
-        $this->actingAs($reviewer)
+        $this->asUser($reviewer)
             ->patchJson("/api/admin/stores/{$tenant->id}/status", ['status' => TenantVerificationStatus::Approved->value])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('application');
 
         foreach ($evidence as $item) {
-            $this->actingAs($reviewer)
+            $this->asUser($reviewer)
                 ->patchJson("/api/admin/stores/{$tenant->id}/application/evidence/{$item->id}", [
                     'status' => ApplicationEvidenceReviewStatus::Accepted->value,
                 ])
                 ->assertOk();
         }
 
-        $this->actingAs($reviewer)
+        $this->asUser($reviewer)
             ->getJson("/api/admin/stores/{$tenant->id}")
             ->assertOk()
             ->assertJsonPath('data.applicationWorkspace.decisionReady', true)
             ->assertJsonPath('data.applicationWorkspace.dossier.reviewBlockers', []);
-        $this->actingAs($reviewer)
+        $this->asUser($reviewer)
             ->patchJson("/api/admin/stores/{$tenant->id}/status", ['status' => TenantVerificationStatus::Approved->value])
             ->assertOk()
             ->assertJsonPath('data.verificationStatus', TenantVerificationStatus::Approved->value);
@@ -104,10 +107,10 @@ class PlatformStoreReviewWorkspaceTest extends TestCase
         $reviewer = $this->platformReviewer('review-isolation@example.test');
         $evidence = StoreApplicationEvidence::query()->where('tenant_id', $first->id)->firstOrFail();
 
-        $this->actingAs($reviewer)
+        $this->asUser($reviewer)
             ->get("/api/admin/stores/{$second->id}/application/evidence/{$evidence->id}")
             ->assertNotFound();
-        $this->actingAs($reviewer)
+        $this->asUser($reviewer)
             ->patchJson("/api/admin/stores/{$second->id}/application/evidence/{$evidence->id}", [
                 'status' => ApplicationEvidenceReviewStatus::Accepted->value,
             ])->assertNotFound();
@@ -130,7 +133,7 @@ class PlatformStoreReviewWorkspaceTest extends TestCase
             'planKey' => 'starter',
             'config' => StoreOnboardingBaseline::make('متجر مراجعة المنصة'),
         ]);
-        $response = $this->actingAs($owner)
+        $response = $this->asUser($owner)
             ->withHeader('Idempotency-Key', (string) Str::uuid())
             ->postJson('/api/register-store', $payload)
             ->assertCreated();
@@ -152,5 +155,13 @@ class PlatformStoreReviewWorkspaceTest extends TestCase
         );
 
         return $reviewer->refresh();
+    }
+
+    private function asUser(User $user): static
+    {
+        Auth::forgetGuards();
+        $this->flushSession();
+
+        return $this->actingAs($user);
     }
 }
