@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Work Package | WP 5.25 — Daily commerce cycle |
-| Status | Implementation verified locally; protected delivery pending |
+| Status | Complete — verified, merged and deployed to retained Pilot |
 | Started | 2026-08-27 |
 | Branch | `codex/wp-5.25-daily-commerce-cycle` |
 | Base | `b015ec1` |
@@ -44,4 +44,20 @@
 - Inventory balances, revisioned adjustments, policy updates and low-stock facts continue through the canonical inventory API and ledger.
 - Existing frontend coverage passed for the product editor (`6 tests`) and inventory panel (`3 tests`). No missing action blocks the customer-to-completion journey, so WP 5.25 adds no parallel product or inventory writer.
 
-Protected delivery, CI and retained Pilot evidence will be appended after the local gates pass.
+## Protected delivery
+
+- Implementation commit: `2a9b65b02e32570c72a4c046371243d121345552`.
+- Protected pull request: [PR #74](https://github.com/sas-prog1/Eoshop/pull/74).
+- Required CI: [run 33083398606](https://github.com/sas-prog1/Eoshop/actions/runs/33083398606).
+- All four required checks passed: Repository safety, Frontend quality, Backend quality and Container integration.
+- Squash merge to protected `main`: `0ab5f25f5037199d51efdde839c84770b99376e2` at `2026-08-27T14:46:04Z`.
+
+## Retained Pilot deployment
+
+- Backend, worker and scheduler image: `eoshop/backend:wp525-pilot-final` (`sha256:56772ef947c847d5f1599ce6992dadf8538eef5ec91b242669d8bc65b862d623`).
+- Web image: `eoshop/web:wp525-pilot-final` (`sha256:cddcb1d902478496c5049d3b2e30bdb1518548cb4fa53a1748527bc878c66b10`), built with `localhost`, `127.0.0.1` and `lvh.me` as central domains and `lvh.me` as the tenant base domain.
+- Only `backend`, `worker`, `scheduler` and `web` were recreated. PostgreSQL container `c7b4b6f464a7` and the retained `eoshop-pilot_postgres_data` volume were preserved.
+- Central schema reported `Nothing to migrate`; active-tenant migration completed for `3 tenant(s)`.
+- Post-deployment HTTP checks returned `200` for `/up`, the central landing page and the published `noor.lvh.me` storefront.
+- The served production asset `/assets/index-BPDffs2u.js` contains the new protected order-detail workspace labels, proving the merged WP 5.25 frontend is the version exposed on port `8010`.
+- The destructive commerce journey was verified against the isolated PostgreSQL gate rather than modifying retained merchant orders; the retained Pilot verification confirms presentation, health, tenant host routing and deployment continuity.

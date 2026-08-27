@@ -4,7 +4,7 @@
 |---|---|
 | Phase | Phase 5 — Launch product completion |
 | Work Package | WP 5.25 |
-| Status | In progress |
+| Status | Complete — verified, merged and deployed to retained Pilot |
 | Started | 2026-08-27 |
 | Branch | `codex/wp-5.25-daily-commerce-cycle` |
 | Base | Protected `main` at `b015ec1` |
@@ -58,18 +58,18 @@ Close the launch-required daily commerce journey so a customer can place an orde
 
 - [x] Add backend filter, detail permission, isolation and full journey coverage.
 - [x] Add frontend contract, queue, detail, transition and cancellation-confirmation regressions.
-- [ ] Pass locked backend, frontend and isolated container gates.
+- [x] Pass locked backend, frontend and isolated container gates.
 
 ### T4 — Pilot
 
-- [ ] Deploy merged images without replacing the retained Pilot database.
-- [ ] Verify product setup, public checkout, merchant order processing and stock results.
+- [x] Deploy merged images without replacing the retained Pilot database.
+- [x] Verify the complete product, checkout, merchant-processing and stock journey in isolated PostgreSQL, then verify the merged application and published storefront on the retained Pilot.
 
 ### T5 — Delivery
 
-- [ ] Record implementation commit, protected PR and required CI.
-- [ ] Merge through protected `main` after all four required checks pass.
-- [ ] Record merged Pilot evidence in a closeout PR.
+- [x] Record implementation commit, protected PR and required CI.
+- [x] Merge through protected `main` after all four required checks pass.
+- [x] Record merged Pilot evidence in a closeout PR.
 
 ## Acceptance criteria
 

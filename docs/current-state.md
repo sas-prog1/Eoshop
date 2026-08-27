@@ -32,15 +32,16 @@ Eoshop has a server-authoritative commerce core, a repeatable local Pilot and a 
 - WP 5.22: one canonical, permission-aware merchant launch console backed by tenant database aggregates and existing operational modules, verified and merged.
 - WP 5.23: server-owned store application requirements, private evidence, a durable review timeline and targeted correction/resubmission, verified, merged and deployed to the retained Pilot.
 - WP 5.24: detailed platform application review, required-evidence decisions and tenant/domain/subscription/provisioning/publication operations are verified, merged and deployed to the retained Pilot.
+- WP 5.25: the tenant-isolated customer-checkout to merchant-processing cycle, protected order detail, permission-aware transitions and authoritative stock completion are verified, merged and deployed to the retained Pilot.
 
 ## Active
 
-- WP 5.25 is active: complete the tenant-isolated customer-checkout to merchant-processing cycle, beginning with the missing professional order queue and protected detail experience.
+- WP 5.26 is next: close the test-release experience so a non-technical QA tester can complete the full journey without hidden links or verbal guidance.
 
 ## Approved next sequence
 
-1. Implement WP 5.25 launch-required commerce-management gaps without widening the release boundary.
-2. Restore richer appearance options through bounded server-owned contracts before broader visual refinement.
+1. Run WP 5.26 across the landing, registration, login, onboarding, administration, merchant operations and public storefront journeys, closing empty/loading/error states, Arabic guidance, mobile behavior and resume/back paths.
+2. Restore richer appearance options through bounded server-owned contracts as a separately gated product increment, without restoring browser-owned business state.
 3. Complete local-market payment verification/notifications, then continue to Phase 6 staging, observability, backup and scale work.
 
 ## Deliberately deferred
