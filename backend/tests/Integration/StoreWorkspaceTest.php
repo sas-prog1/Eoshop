@@ -444,6 +444,37 @@ class StoreWorkspaceTest extends TestCase
         Auth::forgetGuards();
         $this->flushSession();
 
+        $foreignTenant = Tenant::query()->create([
+            'id' => 'wp32-order-foreign',
+            'store_name' => 'Foreign order store',
+            'owner_name' => 'Foreign Owner',
+            'owner_email' => 'foreign-order-owner@example.test',
+            'business_type' => 'retail',
+            'verification_status' => TenantVerificationStatus::Approved->value,
+            'provisioning_status' => ProvisioningState::Active->value,
+            'publication_status' => PublicationStatus::Published->value,
+            'theme_style' => 'elegant',
+            'active_at' => now(),
+        ]);
+        $this->tenantIds[] = $foreignTenant->id;
+        $foreignOwner = $this->user('foreign-order-owner@example.test');
+        app(RoleAssignmentService::class)->assignTenantRole(
+            $foreignTenant,
+            $foreignOwner,
+            Role::query()->where('key', SystemRole::MerchantOwner->value)->firstOrFail(),
+            $foreignOwner,
+        );
+        $this->actingAs($foreignOwner)->getJson($centralOrdersUrl)->assertForbidden();
+        $this->actingAs($foreignOwner)
+            ->withHeaders(['Idempotency-Key' => (string) Str::uuid()])
+            ->patchJson("{$centralOrdersUrl}/{$orderId}/status", [
+                'status' => OrderStatus::Accepted->value,
+                'reasonCode' => 'cross_tenant_attempt',
+            ])
+            ->assertForbidden();
+        Auth::forgetGuards();
+        $this->flushSession();
+
         $tenant->run(function (): void {
             $row = DB::table('store_configs')->where('is_current', true)->firstOrFail();
             $config = json_decode((string) $row->config_json, true, 512, JSON_THROW_ON_ERROR);
@@ -478,11 +509,26 @@ class StoreWorkspaceTest extends TestCase
             ->getJson("http://127.0.0.1/api/merchant/stores/{$tenant->id}/orders")
             ->assertOk()
             ->assertJsonPath('data.items.0.id', $orderId)
-            ->assertJsonPath('data.items.0.allowedTransitions.0', OrderStatus::Accepted->value)
-            ->assertJsonPath('data.items.0.allowedTransitions.1', OrderStatus::Cancelled->value)
+            ->assertJsonPath('data.items.0.customerName', 'Checkout Customer')
+            ->assertJsonPath('data.items.0.allowedTransitions', [])
+            ->assertJsonPath('data.pagination.page', 1)
+            ->assertJsonPath('data.pagination.lastPage', 1)
+            ->assertJsonPath('data.filters.status', null)
+            ->assertJsonPath('data.filters.query', null)
             ->json('data.items.0');
         $this->assertArrayNotHasKey('customer', $list);
         $this->assertArrayNotHasKey('address', $list);
+        $this->withServerVariables(['HTTP_HOST' => '127.0.0.1', 'SERVER_NAME' => '127.0.0.1'])
+            ->actingAs($owner)
+            ->getJson("{$centralOrdersUrl}?status=submitted&query=".urlencode(substr((string) $list['number'], 0, 8)))
+            ->assertOk()
+            ->assertJsonPath('data.pagination.total', 1)
+            ->assertJsonPath('data.filters.status', OrderStatus::Submitted->value);
+        $this->withServerVariables(['HTTP_HOST' => '127.0.0.1', 'SERVER_NAME' => '127.0.0.1'])
+            ->actingAs($owner)
+            ->getJson("{$centralOrdersUrl}?status=completed")
+            ->assertOk()
+            ->assertJsonPath('data.pagination.total', 0);
 
         $viewer = $this->user('order-viewer@example.test');
         $viewerRole = Role::query()->create([
@@ -506,6 +552,12 @@ class StoreWorkspaceTest extends TestCase
             ->assertJsonPath('data.items.0.allowedTransitions', []);
         $this->withServerVariables(['HTTP_HOST' => '127.0.0.1', 'SERVER_NAME' => '127.0.0.1'])
             ->actingAs($viewer)
+            ->getJson("{$centralOrdersUrl}/{$orderId}")
+            ->assertOk()
+            ->assertJsonPath('data.customer.name', 'Checkout Customer')
+            ->assertJsonPath('data.allowedTransitions', []);
+        $this->withServerVariables(['HTTP_HOST' => '127.0.0.1', 'SERVER_NAME' => '127.0.0.1'])
+            ->actingAs($viewer)
             ->withHeaders(['Idempotency-Key' => (string) Str::uuid()])
             ->patchJson("{$centralOrdersUrl}/{$orderId}/status", [
                 'status' => OrderStatus::Accepted->value,
@@ -520,7 +572,12 @@ class StoreWorkspaceTest extends TestCase
             ->getJson("http://127.0.0.1/api/merchant/stores/{$tenant->id}/orders/{$orderId}")
             ->assertOk()
             ->assertJsonPath('data.customer.name', 'Checkout Customer')
-            ->assertJsonPath('data.address.details', 'Gate 1');
+            ->assertJsonPath('data.address.details', 'Gate 1')
+            ->assertJsonPath('data.payment.method', 'cod')
+            ->assertJsonPath('data.payment.reference', null)
+            ->assertJsonPath('data.history.0.to', OrderStatus::Submitted->value)
+            ->assertJsonPath('data.allowedTransitions.0', OrderStatus::Accepted->value)
+            ->assertJsonPath('data.allowedTransitions.1', OrderStatus::Cancelled->value);
         $transitionKey = (string) Str::uuid();
         $this->withServerVariables(['HTTP_HOST' => '127.0.0.1', 'SERVER_NAME' => '127.0.0.1'])
             ->actingAs($owner)
@@ -555,11 +612,46 @@ class StoreWorkspaceTest extends TestCase
             ])
             ->assertConflict()
             ->assertJsonPath('code', 'order_idempotency_conflict');
+
+        $this->withServerVariables(['HTTP_HOST' => '127.0.0.1', 'SERVER_NAME' => '127.0.0.1'])
+            ->actingAs($owner)
+            ->withHeaders(['Idempotency-Key' => (string) Str::uuid()])
+            ->patchJson("http://127.0.0.1/api/merchant/stores/{$tenant->id}/orders/{$orderId}/status", [
+                'status' => OrderStatus::Processing->value,
+                'reasonCode' => 'merchant_started_processing',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.replayed', false)
+            ->assertJsonPath('data.order.status', OrderStatus::Processing->value)
+            ->assertJsonPath('data.order.allowedTransitions.0', OrderStatus::Completed->value);
+
+        $this->withServerVariables(['HTTP_HOST' => '127.0.0.1', 'SERVER_NAME' => '127.0.0.1'])
+            ->actingAs($owner)
+            ->withHeaders(['Idempotency-Key' => (string) Str::uuid()])
+            ->patchJson("http://127.0.0.1/api/merchant/stores/{$tenant->id}/orders/{$orderId}/status", [
+                'status' => OrderStatus::Completed->value,
+                'reasonCode' => 'merchant_completed_order',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.replayed', false)
+            ->assertJsonPath('data.order.status', OrderStatus::Completed->value)
+            ->assertJsonPath('data.order.allowedTransitions', []);
+
+        $this->withServerVariables(['HTTP_HOST' => '127.0.0.1', 'SERVER_NAME' => '127.0.0.1'])
+            ->actingAs($owner)
+            ->getJson("{$centralOrdersUrl}?status=completed")
+            ->assertOk()
+            ->assertJsonPath('data.pagination.total', 1)
+            ->assertJsonPath('data.items.0.id', $orderId)
+            ->assertJsonPath('data.items.0.status', OrderStatus::Completed->value)
+            ->assertJsonPath('data.items.0.allowedTransitions', []);
+
         $tenant->run(function () use ($additionalProductId, $orderId, $owner, $productId): void {
             $this->assertSame(8, (int) DB::table('products')->where('id', $productId)->value('stock_quantity'));
             $this->assertSame(0, (int) DB::table('products')->where('id', $productId)->value('reserved_quantity'));
             $this->assertSame('committed', DB::table('inventory_reservations')->value('status'));
-            $this->assertSame([1, 2], DB::table('order_status_history')->where('order_id', $orderId)->orderBy('sequence')->pluck('sequence')->map('intval')->all());
+            $this->assertSame(OrderStatus::Completed->value, DB::table('orders')->where('id', $orderId)->value('status'));
+            $this->assertSame([1, 2, 3, 4], DB::table('order_status_history')->where('order_id', $orderId)->orderBy('sequence')->pluck('sequence')->map('intval')->all());
             try {
                 DB::table('order_items')->update(['product_name' => 'tampered']);
                 $this->fail('Immutable order snapshots must reject direct database mutation.');
@@ -601,9 +693,9 @@ class StoreWorkspaceTest extends TestCase
                         'id' => (string) Str::uuid(),
                         'order_id' => $orderId,
                         'operation_id' => $operationId,
-                        'sequence' => 3,
-                        'from_status' => OrderStatus::Accepted->value,
-                        'to_status' => OrderStatus::Processing->value,
+                        'sequence' => 5,
+                        'from_status' => OrderStatus::Processing->value,
+                        'to_status' => OrderStatus::Completed->value,
                         'actor_type' => 'user',
                         'actor_user_id' => (string) $owner->id,
                         'reason_code' => 'unbound_direct_sql',
@@ -614,7 +706,7 @@ class StoreWorkspaceTest extends TestCase
             } catch (\PDOException|QueryException $exception) {
                 $this->assertStringContainsString('order status history is inconsistent', $exception->getMessage());
             }
-            $this->assertSame(2, DB::table('order_status_history')->where('order_id', $orderId)->count());
+            $this->assertSame(4, DB::table('order_status_history')->where('order_id', $orderId)->count());
         });
     }
 

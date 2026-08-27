@@ -86,6 +86,7 @@ export function createFakeUiAdapters(overrides: AdapterOverrides = {}): UiAdapte
       loadStorefront: async () => unexpected("orders.loadStorefront"),
       create: async () => unexpected("orders.create"),
       list: async () => unexpected("orders.list"),
+      detail: async () => unexpected("orders.detail"),
       updateStatus: async () => unexpected("orders.updateStatus"),
     },
     merchantDashboard: {

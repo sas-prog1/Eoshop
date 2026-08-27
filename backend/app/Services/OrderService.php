@@ -226,21 +226,40 @@ class OrderService
     }
 
     /** @return array<string, mixed> */
-    public function list(Tenant $tenant, User $actor, int $page, int $perPage): array
-    {
-        return $this->withLockedMembership($tenant, $actor, PermissionKey::TenantOrdersView, function (Tenant $lockedTenant) use ($actor, $page, $perPage): array {
+    public function list(
+        Tenant $tenant,
+        User $actor,
+        int $page,
+        int $perPage,
+        ?OrderStatus $status = null,
+        ?string $query = null,
+    ): array {
+        return $this->withLockedMembership($tenant, $actor, PermissionKey::TenantOrdersView, function (Tenant $lockedTenant) use ($page, $perPage, $query, $status): array {
             $this->assertOperationalReady($lockedTenant);
-            $canManage = $actor->hasTenantPermission($lockedTenant, PermissionKey::TenantOrdersManage);
 
-            return $this->inTenant($lockedTenant, fn (): array => DB::connection('tenant')->transaction(function () use ($canManage, $page, $perPage): array {
+            return $this->inTenant($lockedTenant, fn (): array => DB::connection('tenant')->transaction(function () use ($page, $perPage, $query, $status): array {
                 DB::connection('tenant')->statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
-                $query = DB::table('orders')->orderByDesc('created_at')->orderByDesc('id');
-                $total = $query->count();
-                $items = $query->forPage($page, $perPage)->get()->map(
-                    fn (object $order): array => $this->resource($order, false, $canManage),
+                $orders = DB::table('orders')
+                    ->when($status !== null, fn ($builder) => $builder->where('status', $status->value))
+                    ->when($query !== null && $query !== '', fn ($builder) => $builder->where('order_number', 'like', $query.'%'));
+                $total = (clone $orders)->count();
+                $items = $orders->orderByDesc('created_at')->orderByDesc('id')->forPage($page, $perPage)->get()->map(
+                    fn (object $order): array => $this->resource($order, false, false, true),
                 )->all();
 
-                return ['items' => $items, 'pagination' => ['page' => $page, 'perPage' => $perPage, 'total' => $total]];
+                return [
+                    'items' => $items,
+                    'pagination' => [
+                        'page' => $page,
+                        'perPage' => $perPage,
+                        'total' => $total,
+                        'lastPage' => max(1, (int) ceil($total / $perPage)),
+                    ],
+                    'filters' => [
+                        'status' => $status?->value,
+                        'query' => $query,
+                    ],
+                ];
             }));
         });
     }
@@ -248,17 +267,18 @@ class OrderService
     /** @return array<string, mixed> */
     public function detail(Tenant $tenant, User $actor, string $orderId): array
     {
-        return $this->withLockedMembership($tenant, $actor, PermissionKey::TenantOrdersView, function (Tenant $lockedTenant) use ($orderId): array {
+        return $this->withLockedMembership($tenant, $actor, PermissionKey::TenantOrdersView, function (Tenant $lockedTenant) use ($actor, $orderId): array {
             $this->assertOperationalReady($lockedTenant);
+            $canManage = $actor->hasTenantPermission($lockedTenant, PermissionKey::TenantOrdersManage);
 
-            return $this->inTenant($lockedTenant, fn (): array => DB::connection('tenant')->transaction(function () use ($orderId): array {
+            return $this->inTenant($lockedTenant, fn (): array => DB::connection('tenant')->transaction(function () use ($canManage, $orderId): array {
                 DB::connection('tenant')->statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
                 $order = DB::table('orders')->where('id', $orderId)->first();
                 if ($order === null) {
                     throw new OrderConflict('The order does not exist.', 'order_missing', 404);
                 }
 
-                return $this->resource($order, true);
+                return $this->resource($order, true, $canManage, true);
             }));
         });
     }
@@ -310,7 +330,7 @@ class OrderService
 
                 return $this->operations->storeResult((string) $claim['operation']->id, [
                     'replayed' => false,
-                    'order' => $this->resource(DB::table('orders')->where('id', $orderId)->firstOrFail(), false, true),
+                    'order' => $this->resource(DB::table('orders')->where('id', $orderId)->firstOrFail(), false, true, true),
                 ]);
             }));
         });
@@ -429,8 +449,12 @@ class OrderService
     }
 
     /** @return array<string, mixed> */
-    private function resource(object $order, bool $includePrivate, bool $includeAllowedTransitions = false): array
-    {
+    private function resource(
+        object $order,
+        bool $includePrivate,
+        bool $includeAllowedTransitions = false,
+        bool $includeCustomerSummary = false,
+    ): array {
         $resource = [
             'id' => (string) $order->id,
             'number' => (string) $order->order_number,
@@ -454,6 +478,13 @@ class OrderService
                 ? array_map(static fn (OrderStatus $status): string => $status->value, $this->allowedTransitions(OrderStatus::from((string) $order->status)))
                 : [],
         ];
+        $customer = null;
+        if ($includePrivate || $includeCustomerSummary) {
+            $customer = json_decode(Crypt::decryptString((string) $order->customer_encrypted), true, 512, JSON_THROW_ON_ERROR);
+        }
+        if ($includeCustomerSummary) {
+            $resource['customerName'] = is_array($customer) && isset($customer['name']) ? (string) $customer['name'] : '';
+        }
         if (! $includePrivate) {
             return $resource;
         }
@@ -463,8 +494,16 @@ class OrderService
             'lineTotalMinor' => (int) $item->line_total_minor, 'tracked' => (bool) $item->tracked_at_submission,
         ])->all();
         $address = DB::table('order_addresses')->where('order_id', $order->id)->first();
-        $resource['customer'] = json_decode(Crypt::decryptString((string) $order->customer_encrypted), true, 512, JSON_THROW_ON_ERROR);
+        $resource['customer'] = $customer;
         $resource['address'] = $address === null ? null : json_decode(Crypt::decryptString((string) $address->encrypted_payload), true, 512, JSON_THROW_ON_ERROR);
+        $payment = DB::table('payment_attempts')->where('order_id', $order->id)->orderByDesc('created_at')->orderByDesc('id')->first();
+        $resource['payment'] = $payment === null ? null : [
+            'method' => (string) $payment->method,
+            'state' => (string) $payment->state,
+            'channelId' => $payment->channel_id,
+            'channelLabel' => $payment->channel_label,
+            'reference' => $payment->encrypted_reference === null ? null : Crypt::decryptString((string) $payment->encrypted_reference),
+        ];
         $resource['history'] = DB::table('order_status_history')->where('order_id', $order->id)->orderBy('sequence')->get()->map(fn (object $row): array => [
             'from' => $row->from_status, 'to' => (string) $row->to_status, 'reasonCode' => (string) $row->reason_code, 'createdAt' => (string) $row->created_at,
         ])->all();

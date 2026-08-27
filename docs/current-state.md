@@ -35,7 +35,7 @@ Eoshop has a server-authoritative commerce core, a repeatable local Pilot and a 
 
 ## Active
 
-- WP 5.25 is next: close launch-required commerce-management gaps without widening the release boundary.
+- WP 5.25 is active: complete the tenant-isolated customer-checkout to merchant-processing cycle, beginning with the missing professional order queue and protected detail experience.
 
 ## Approved next sequence
 

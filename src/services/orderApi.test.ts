@@ -29,6 +29,9 @@ const receipt = {
   status: "submitted",
   allowedTransitions: ["cancelled", "accepted"],
   paymentState: "due_on_delivery",
+  paymentMethod: "cod",
+  couponCode: null,
+  customerName: "Checkout Customer",
   currencyCode: "YER",
   totals: {
     itemsSubtotalMinor: 2500,
@@ -50,6 +53,12 @@ const receipt = {
   createdAt: "2026-08-17T10:00:00Z",
   internalCost: 900,
 };
+
+const listData = (items: unknown[]) => ({
+  items,
+  pagination: { page: 1, perPage: 25, total: items.length, lastPage: 1 },
+  filters: { status: null, query: null },
+});
 
 afterEach(() => {
   apiClient.clearCsrfToken();
@@ -110,7 +119,8 @@ describe("orderApi", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
       data: {
         items: [{ ...receipt, totals: { ...receipt.totals, taxMinor: 1.5 } }],
-        pagination: { total: 1 },
+        pagination: { page: 1, perPage: 25, total: 1, lastPage: 1 },
+        filters: { status: null, query: null },
       },
     }), { status: 200 })));
 
@@ -121,12 +131,33 @@ describe("orderApi", () => {
   });
 
   it("maps only server-projected order transitions", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      data: { items: [receipt], pagination: { total: 1 } },
-    }), { status: 200 })));
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {
+      ...listData([receipt]),
+      filters: { status: "submitted", query: "EO-222" },
+    } }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
 
-    const result = await orderApi.list("tenant-one");
+    const result = await orderApi.list("tenant-one", { status: "submitted", query: "EO-222" });
     expect(result.items[0].allowedTransitions).toEqual(["cancelled", "accepted"]);
+    expect(result.items[0].customerName).toBe("Checkout Customer");
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/merchant/stores/tenant-one/orders?status=submitted&query=EO-222");
+  });
+
+  it("maps protected order details without accepting unknown transition or payment values", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {
+      ...receipt,
+      customer: { name: "Checkout Customer", phone: "+967700000001", email: "customer@example.test", notes: "اتصل قبل الوصول" },
+      address: { city: "Sanaa", area: "Old City", street: null, details: "Gate 1" },
+      payment: { method: "cod", state: "due_on_delivery", channelId: null, channelLabel: null, reference: null },
+      history: [{ from: null, to: "submitted", reasonCode: "checkout_submitted", createdAt: "2026-08-17T10:00:00Z" }],
+    } }), { status: 200 })));
+
+    const detail = await orderApi.detail("tenant-one", receipt.id);
+
+    expect(detail.customer.phone).toBe("+967700000001");
+    expect(detail.address?.details).toBe("Gate 1");
+    expect(detail.items[0].lineTotalMinor).toBe(2500);
+    expect(detail.history[0].to).toBe("submitted");
   });
 
   it("rejects a malformed receipt contact target", async () => {
@@ -136,7 +167,8 @@ describe("orderApi", () => {
           ...receipt,
           checkoutPresentation: { title: "Title", message: "Message", whatsappTarget: "javascript:alert(1)" },
         }],
-        pagination: { total: 1 },
+        pagination: { page: 1, perPage: 25, total: 1, lastPage: 1 },
+        filters: { status: null, query: null },
       },
     }), { status: 200 })));
 

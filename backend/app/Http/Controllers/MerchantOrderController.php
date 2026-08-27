@@ -18,9 +18,18 @@ class MerchantOrderController extends Controller
         $validated = validator($request->query(), [
             'page' => ['nullable', 'integer', 'min:1'],
             'perPage' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'status' => ['nullable', 'string', 'in:submitted,accepted,processing,completed,cancelled,expired'],
+            'query' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9-]+$/'],
         ])->validate();
 
-        return $this->respond(fn (): array => $orders->list($tenant, $this->actor($request), (int) ($validated['page'] ?? 1), (int) ($validated['perPage'] ?? 25)));
+        return $this->respond(fn (): array => $orders->list(
+            $tenant,
+            $this->actor($request),
+            (int) ($validated['page'] ?? 1),
+            (int) ($validated['perPage'] ?? 25),
+            isset($validated['status']) ? OrderStatus::from((string) $validated['status']) : null,
+            isset($validated['query']) ? mb_strtoupper(trim((string) $validated['query'])) : null,
+        ));
     }
 
     public function show(Request $request, Tenant $tenant, string $order, OrderService $orders): JsonResponse

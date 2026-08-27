@@ -15,6 +15,35 @@ export interface MerchantOrderAction {
   tone: "danger" | "primary";
 }
 
+export function merchantOrderStatusLabel(status: OrderReceipt["status"]): string {
+  return {
+    submitted: "جديد",
+    accepted: "مقبول",
+    processing: "قيد التجهيز",
+    completed: "مكتمل",
+    cancelled: "ملغي",
+    expired: "منتهي",
+  }[status];
+}
+
+export function merchantPaymentMethodLabel(method: OrderReceipt["paymentMethod"]): string {
+  if (method === "cod") return "الدفع عند الاستلام";
+  if (method === "bank_transfer") return "تحويل بنكي";
+  if (method === "wallet") return "محفظة إلكترونية";
+  return "وسيلة الدفع غير متاحة";
+}
+
+export function merchantOrderReasonLabel(reasonCode: string): string {
+  return {
+    checkout_submitted: "أرسل العميل الطلب",
+    merchant_accepted: "قبل التاجر الطلب",
+    merchant_processing: "بدأ التاجر التجهيز",
+    merchant_completed: "أكمل التاجر الطلب",
+    merchant_cancelled: "ألغى التاجر الطلب",
+    checkout_reservation_expired: "انتهت مهلة حجز المخزون",
+  }[reasonCode] ?? "تحديث مسجل من الخادم";
+}
+
 export function merchantOrderActions(order: OrderReceipt): MerchantOrderAction[] {
   const labels: Record<NonNullable<OrderReceipt["allowedTransitions"]>[number], string> = {
     accepted: "قبول الطلب",

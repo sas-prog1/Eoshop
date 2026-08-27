@@ -5,7 +5,6 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OrderReceipt } from "../../adapters/uiAdapters";
-import type { MerchantOrderAction } from "../../workflows/orderState";
 import MerchantOrdersPanel from "../orders/MerchantOrdersPanel";
 import StoreSubmissionPanel from "../tenancy/StoreSubmissionPanel";
 import AiCopywriterPanel from "./AiCopywriterPanel";
@@ -30,11 +29,6 @@ const order = {
   items: [],
   createdAt: "2026-08-17T10:00:00Z",
 } as OrderReceipt;
-
-const submittedActions: MerchantOrderAction[] = [
-  { status: "cancelled", label: "إلغاء", tone: "danger" },
-  { status: "accepted", label: "نقل إلى accepted", tone: "primary" },
-];
 
 describe("control panel workflow panels", () => {
   it("preserves both device choices, selected styling and callbacks", async () => {
@@ -62,9 +56,7 @@ describe("control panel workflow panels", () => {
   it("renders order loading, error and empty states", () => {
     const props = {
       orders: [] as OrderReceipt[],
-      pendingOrderIds: new Set<string>(),
-      actionsFor: vi.fn(() => []),
-      onAdvance: vi.fn(),
+      onOpen: vi.fn(),
     };
     const view = render(<MerchantOrdersPanel {...props} loading error={null} />);
     expect(screen.getByText("جارٍ تحميل الطلبات...")).toBeTruthy();
@@ -74,52 +66,36 @@ describe("control panel workflow panels", () => {
     expect(screen.getByText("لا توجد طلبات مسجلة بعد.")).toBeTruthy();
   });
 
-  it("renders only coordinator-provided order actions and disables pending transitions", async () => {
-    const onAdvance = vi.fn();
+  it("opens the protected detail instead of exposing blind list transitions", async () => {
+    const onOpen = vi.fn();
     const user = userEvent.setup();
-    const actionsFor = vi.fn(() => submittedActions);
-    const view = render(
+    render(
       <MerchantOrdersPanel
-        orders={[order]}
+        orders={[{ ...order, customerName: "عميل التجربة", paymentMethod: "cod" }]}
         loading={false}
         error={null}
-        pendingOrderIds={new Set()}
-        actionsFor={actionsFor}
-        onAdvance={onAdvance}
+        onOpen={onOpen}
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "إلغاء" }));
-    await user.click(screen.getByRole("button", { name: "نقل إلى accepted" }));
-    expect(onAdvance).toHaveBeenNthCalledWith(1, order, "cancelled");
-    expect(onAdvance).toHaveBeenNthCalledWith(2, order, "accepted");
-
-    view.rerender(
-      <MerchantOrdersPanel
-        orders={[order]}
-        loading={false}
-        error={null}
-        pendingOrderIds={new Set([order.id])}
-        actionsFor={actionsFor}
-        onAdvance={onAdvance}
-      />,
-    );
-    expect((screen.getByRole("button", { name: "إلغاء" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("عميل التجربة")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "قبول الطلب" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: /فتح تفاصيل الطلب/ }));
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: order.id }));
   });
 
-  it("shows no action for a terminal order when the coordinator supplies none", () => {
+  it("keeps terminal orders inspectable", () => {
     render(
       <MerchantOrdersPanel
         orders={[{ ...order, status: "completed" }]}
         loading={false}
         error={null}
-        pendingOrderIds={new Set()}
-        actionsFor={() => []}
-        onAdvance={vi.fn()}
+        onOpen={vi.fn()}
       />,
     );
 
-    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.getByText("مكتمل")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /فتح تفاصيل الطلب/ })).toBeTruthy();
   });
 
   it("preserves assistant prompt guards, loading state and rendered output", () => {
