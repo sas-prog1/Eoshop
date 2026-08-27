@@ -43,6 +43,8 @@ describe("platform settings application", () => {
     );
 
     expect((await screen.findAllByText("منصة الاختبار")).length).toBeGreaterThan(0);
+    const visitor = userEvent.setup();
+    await visitor.click(screen.getByRole("button", { name: "فتح قائمة التنقل" }));
     expect(screen.getByRole("navigation", { name: "التنقل الرئيسي للجوال" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "support@example.test" }).getAttribute("href")).toBe("mailto:support@example.test");
     expect(screen.getByRole("link", { name: "+967700000000" }).getAttribute("href")).toBe("tel:+967700000000");

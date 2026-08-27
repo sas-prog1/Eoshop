@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
-  Store, Paintbrush, Package, Sparkles, Smartphone, Monitor, 
+  Store, Package, Sparkles, Smartphone, Monitor,
   ArrowRight, ArrowLeft, Plus, Trash2, Check, ShoppingBag, 
   X, ExternalLink, Save, RefreshCw, Eye, Code, Phone, Info,
   ShieldCheck, LogOut, FileCheck, Sliders, Users, Settings,
-  Layout, Palette, Zap, CheckCircle2, LogIn, User
+  CheckCircle2
 } from "lucide-react";
 
 import { Product, StoreConfig, ELEGANT_PRESET, TECH_PRESET } from "./types";
@@ -61,6 +61,11 @@ import { usePlatformSettings } from "./adapters/PlatformSettingsContext";
 import AuthRoutePage from "./features/auth/AuthRoutePage";
 import AccountPage from "./features/account/AccountPage";
 import MerchantOnboardingPage from "./features/onboarding/MerchantOnboardingPage";
+import PlatformLandingHero from "./features/landing/PlatformLandingHero";
+import PlatformJourneySection from "./features/landing/PlatformJourneySection";
+import PlatformCapabilitiesSection from "./features/landing/PlatformCapabilitiesSection";
+import PlatformTemplatesSection from "./features/landing/PlatformTemplatesSection";
+import PlatformLandingClosure from "./features/landing/PlatformLandingClosure";
 import { refreshMerchantLifecycleSnapshot } from "./workflows/merchantLifecycleRefresh";
 import { coordinateCustomizationCompletion } from "./workflows/customizationCompletion";
 import { loadPublicStorefrontWithRecovery, publicStorefrontFailureMessage } from "./workflows/publicStorefrontRecovery";
@@ -1347,11 +1352,7 @@ export default function App() {
     .sort((left, right) => left.position - right.position);
 
   const followPlatformNavigation = (key: "templates" | "how_it_works" | "pricing") => {
-    if (key === "templates") {
-      setView("templates");
-      return;
-    }
-    document.getElementById(key === "how_it_works" ? "how-it-works" : "pricing")
+    document.getElementById(key === "templates" ? "templates" : key === "how_it_works" ? "how-it-works" : "pricing")
       ?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -1476,331 +1477,45 @@ export default function App() {
 
       {/* ----------------- 1. LANDING PAGE VIEW ----------------- */}
       {view === "landing" && (
-        <div className="flex-1 flex flex-col relative overflow-hidden bg-[#fafbfe]">
-          {/* Ambient Blurred Background Accents */}
-          <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-sky-200/40 rounded-full blur-3xl -z-10" />
-          <div className="absolute bottom-10 left-1/4 w-[600px] h-[600px] bg-amber-100/40 rounded-full blur-3xl -z-10" />
+        <div className="relative flex flex-1 flex-col overflow-hidden bg-[#f8f6f1]">
+          <PlatformLandingHero
+            settings={platformSettings}
+            navigation={visiblePlatformNavigation}
+            user={authUser}
+            onNavigate={followPlatformNavigation}
+            onLogin={() => window.location.assign("/login")}
+            onRegister={() => window.location.assign("/register")}
+            onOpenPortal={() => {
+              setView("merchant_dashboard");
+              pushCentralPath("/app");
+            }}
+            onCreateStore={() => window.location.assign("/app/new")}
+            onExplainJourney={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}
+          />
 
-          {platformSettings.announcementEnabled && platformSettings.announcementText && (
-            <div className="px-6 py-2 text-center text-xs font-black" style={{ backgroundColor: platformSettings.primaryColor, color: "var(--platform-primary-foreground)" }}>
-              {platformSettings.announcementText}
-            </div>
+          {platformSettings.showHowItWorks && (
+            <PlatformJourneySection
+              platformName={platformSettings.platformName}
+              ctaLabel={authUser ? "إنشاء متجر جديد" : "أنشئ متجرك"}
+              onStart={() => window.location.assign(authUser ? "/app/new" : "/register")}
+            />
           )}
 
-          {/* Header */}
-          <header className="container mx-auto px-6 py-5 flex items-center justify-between border-b border-slate-100/80">
-            <div className="flex items-center gap-3">
-              {platformSettings.logoUrl ? (
-                <img src={platformSettings.logoUrl} alt="" className="h-11 w-11 rounded-xl border border-slate-200 bg-white object-contain p-1" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="p-2.5 rounded-xl shadow-md text-white" style={{ backgroundColor: platformSettings.primaryColor }}><Store className="w-6 h-6" /></div>
-              )}
-              <div>
-                <span className="font-display font-black text-xl tracking-tight text-slate-900">{platformSettings.platformName}</span>
-                {platformSettings.tagline && <span className="text-[10px] block font-bold -mt-1" style={{ color: platformSettings.primaryColor }}>{platformSettings.tagline}</span>}
-              </div>
-            </div>
+          <PlatformCapabilitiesSection />
 
-            <nav aria-label="التنقل الرئيسي" className="hidden items-center gap-1 lg:flex">
-              {visiblePlatformNavigation.map((item) => (
-                <button key={item.key} type="button" onClick={() => followPlatformNavigation(item.key)} className="rounded-lg px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950">
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-            
-            <div className="flex items-center gap-3">
-              {authUser ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setView("merchant_dashboard");
-                      pushCentralPath("/app");
-                    }}
-                    className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-900 px-4 py-2.5 rounded-xl transition font-bold text-xs shadow-2xs border border-slate-200/60"
-                  >
-                    <User className="w-4 h-4 text-sky-600" />
-                    <span>مرحباً، {(authUser?.fullName || "التاجر").split(' ')[0]} 👋</span>
-                  </button>
-
-                  <button 
-                    onClick={() => window.location.assign("/app/new")}
-                    className="bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white px-4 py-2.5 rounded-xl shadow-md shadow-sky-500/20 transition font-bold text-xs flex items-center gap-1.5"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>أنشئ متجرك الآن 🚀</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => window.location.assign("/login")}
-                    className="bg-transparent hover:bg-slate-100 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl transition font-bold text-xs flex items-center gap-1.5"
-                  >
-                    <LogIn className="w-4 h-4 text-slate-500" />
-                    <span>تسجيل الدخول</span>
-                  </button>
-
-                  <button
-                    onClick={() => window.location.assign("/register")}
-                    className="bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white px-5 py-2.5 rounded-xl shadow-md shadow-sky-500/20 transition font-bold text-xs flex items-center gap-1.5"
-                  >
-                    <User className="w-4 h-4" />
-                    <span>إنشاء حساب جديد</span>
-                  </button>
-                </div>
-              )}
-
-            </div>
-          </header>
-
-          {visiblePlatformNavigation.length > 0 && (
-            <nav aria-label="التنقل الرئيسي للجوال" className="container mx-auto flex gap-2 overflow-x-auto border-b border-slate-100 px-6 pb-4 lg:hidden">
-              {visiblePlatformNavigation.map((item) => (
-                <button key={item.key} type="button" onClick={() => followPlatformNavigation(item.key)} className="shrink-0 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-slate-200">
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-          )}
-
-          {/* Hero Content */}
-          <main className="flex-1 container mx-auto px-6 py-12 md:py-20 flex flex-col lg:flex-row items-center gap-16">
-            <div className="flex-1 text-right space-y-8 max-w-2xl">
-              <div className="inline-flex items-center gap-2 bg-sky-50 text-sky-700 px-4 py-1.5 rounded-full text-xs font-bold border border-sky-100">
-                <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-                <span>الجيل القادم من التجارة الإلكترونية بالذكاء الاصطناعي</span>
-              </div>
-              
-              <h1 className="font-display font-extrabold text-4xl sm:text-5xl md:text-6xl text-slate-900 leading-tight">
-                {platformSettings.landingHeadline}
-              </h1>
-              
-              <p className="text-slate-600 text-base md:text-lg leading-relaxed font-normal">
-                {platformSettings.landingDescription}
-              </p>
-
-              {/* Feature Highlights Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
-                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition duration-200 flex flex-col gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center font-bold">
-                    <Layout className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-sm">قوالب احترافية</h3>
-                    <p className="text-xs text-slate-500 leading-relaxed mt-1">
-                      تصاميم متجاوبة وعصرية تناسب مختلف الأنشطة.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition duration-200 flex flex-col gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 border border-sky-200/60 flex items-center justify-center font-bold">
-                    <Palette className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-sm">تخصيص كامل</h3>
-                    <p className="text-xs text-slate-500 leading-relaxed mt-1">
-                      تحكم بمرونة في الألوان، الشعار والمنتجات.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition duration-200 flex flex-col gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200/60 flex items-center justify-center font-bold">
-                    <Zap className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-sm">انطلاق سريع</h3>
-                    <p className="text-xs text-slate-500 leading-relaxed mt-1">
-                      انشر متجرك واستقبل عملاءك بلمح البصر.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Buttons Area */}
-              <div className="flex flex-wrap items-center gap-4">
-                <button 
-                  onClick={() => checkRegistrationAndExecute("templates")}
-                  className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl transition font-bold text-base shadow-xl shadow-slate-950/10 flex items-center gap-3 group"
-                >
-                  <span>ابدأ باختيار القوالب</span>
-                  <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition" />
-                </button>
-                <button 
-                  onClick={() => {
-                    const scrollSection = document.getElementById("how-it-works");
-                    scrollSection?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                  className="bg-transparent border border-slate-200 text-slate-700 hover:bg-slate-50 px-6 py-4 rounded-xl transition font-semibold text-base"
-                >
-                  شرح الخطوات
-                </button>
-              </div>
-            </div>
-
-            {/* Visual Teaser Column - Fixed Smartphone Store Showcase */}
-            <div className="flex-1 relative w-full max-w-md lg:max-w-none flex flex-col items-center">
-              {/* Smartphone Frame Container */}
-              <div className="relative mx-auto w-[310px] sm:w-[325px] h-[580px] sm:h-[600px] bg-[#181d2d] rounded-[3.2rem] p-3 shadow-2xl shadow-slate-950/50 border-[10px] border-[#181d2d] ring-1 ring-slate-700/60 hidden md:flex flex-col justify-between overflow-hidden select-none group">
-                {/* Side Physical Buttons Accents */}
-                <div className="absolute -left-[13px] top-28 w-1 h-10 bg-[#283149] rounded-l-md border-r border-slate-950" />
-                <div className="absolute -left-[13px] top-42 w-1 h-10 bg-[#283149] rounded-l-md border-r border-slate-950" />
-                <div className="absolute -right-[13px] top-32 w-1 h-14 bg-[#283149] rounded-r-md border-l border-slate-950" />
-
-                {/* iPhone / Smartphone Top Camera Notch */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-5 bg-[#0d111d] rounded-b-2xl z-30 flex items-center justify-center gap-2 border-b border-slate-800">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#1e293b] border border-slate-700 shrink-0" />
-                  <div className="w-10 h-1 rounded-full bg-[#1e293b] shrink-0" />
-                </div>
-
-                {/* Top Glass Sheen Layer */}
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent z-20 rounded-[2.5rem]" />
-
-                {/* Smartphone Screen Content - Fixed Light Luxury Store */}
-                <div className="w-full h-full rounded-[2.4rem] overflow-hidden flex flex-col justify-between text-slate-900 p-5 pt-8 relative bg-slate-50">
-                  {/* Header & Hero Content */}
-                  <div className="space-y-4">
-                    {/* Top Bar */}
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
-                      <span className="font-display font-black text-base text-amber-700 tracking-tight">
-                        لورين للعطور
-                      </span>
-                      <div className="bg-amber-100/80 p-2 rounded-xl border border-amber-200 text-amber-700 shadow-2xs">
-                        <ShoppingBag className="w-4 h-4" />
-                      </div>
-                    </div>
-
-                    {/* Main Banner Card */}
-                    <div className="p-4 rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 text-white space-y-2 shadow-md relative overflow-hidden">
-                      <span className="text-[10px] font-black text-amber-100 uppercase tracking-wide bg-amber-900/20 px-2 py-0.5 rounded-md inline-block">
-                        جديد صيف 2026
-                      </span>
-                      <h4 className="text-sm font-black leading-snug tracking-tight text-white">
-                        تألق بعطور العود الملوكية
-                      </h4>
-                      <p className="text-[11px] text-amber-100/90 leading-relaxed">
-                        عطور شرقية فاخرة مستوحاة من العود المعتق والأصالة.
-                      </p>
-                    </div>
-
-                    {/* Mini Featured Products */}
-                    <div className="grid grid-cols-2 gap-2.5 pt-1">
-                      <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 flex flex-col justify-between h-24 shadow-2xs">
-                        <div>
-                          <span className="text-[9px] text-amber-700 font-black bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60 inline-block">الأكثر طلباً</span>
-                          <span className="text-[11px] font-bold text-slate-800 block truncate mt-1">عطر العود الملوكي</span>
-                        </div>
-                        <div className="flex items-center justify-between mt-auto">
-                          <span className="text-xs font-black text-amber-600">180 ر.س</span>
-                          <span className="w-5 h-5 rounded-md bg-amber-500 text-white flex items-center justify-center text-xs font-bold shadow-2xs">+</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 flex flex-col justify-between h-24 shadow-2xs">
-                        <div>
-                          <span className="text-[9px] text-amber-700 font-black bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60 inline-block">حصري</span>
-                          <span className="text-[11px] font-bold text-slate-800 block truncate mt-1">مسك الختام الملوكي</span>
-                        </div>
-                        <div className="flex items-center justify-between mt-auto">
-                          <span className="text-xs font-black text-amber-600">220 ر.س</span>
-                          <span className="w-5 h-5 rounded-md bg-amber-500 text-white flex items-center justify-center text-xs font-bold shadow-2xs">+</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Decorative Widgets */}
-              <div className="absolute top-20 -right-4 bg-white border border-slate-100 p-4 rounded-xl shadow-xl space-y-2 hidden xl:block z-20">
-                <div className="flex items-center gap-3">
-                  <div className="bg-amber-100 p-2 rounded-lg text-amber-600">
-                    <Sparkles className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-xs text-slate-800">تعديل الألوان والهوية</h5>
-                    <p className="text-[10px] text-slate-400">تغيير بنقرة واحدة</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="absolute bottom-20 -left-6 bg-white border border-slate-100 p-4 rounded-xl shadow-xl space-y-2 hidden xl:block z-20">
-                <div className="flex items-center gap-3">
-                  <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600">
-                    <Check className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-xs text-slate-800">قالب متجاوب 100%</h5>
-                    <p className="text-[10px] text-slate-400">يبدو مذهلاً على الجوال والكمبيوتر</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </main>
-
-          {/* Steps Explanation Section */}
-          {platformSettings.showHowItWorks && <section id="how-it-works" className="bg-white border-t border-slate-100 py-16 scroll-mt-6">
-            <div className="container mx-auto px-6">
-              <div className="text-center max-w-xl mx-auto space-y-4 mb-16">
-                <h2 className="font-display font-extrabold text-2xl md:text-3xl text-slate-900">كيف تعمل منصة {platformSettings.platformName}؟</h2>
-                <p className="text-slate-500 text-sm md:text-base">بثلاثة خطوات بسيطة، ستتحول فكرتك التجارية إلى متجر إلكتروني متكامل جاهز للمعاينة والتخصيص.</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                <div className="text-center space-y-4 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
-                  <div className="w-14 h-14 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center mx-auto shadow-md">
-                    <LogIn className="w-7 h-7" />
-                  </div>
-                  <h4 className="font-bold text-lg text-slate-900">1. تسجيل الدخول</h4>
-                  <p className="text-slate-500 text-sm leading-relaxed">قم بتسجيل الدخول أو إنشاء حسابك الجديد للوصول إلى لوحة تحكم متجرك والبدء في تصميم متجرك مباشرة.</p>
-                </div>
-
-                <div className="text-center space-y-4 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
-                  <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto shadow-md">
-                    <Store className="w-7 h-7" />
-                  </div>
-                  <h4 className="font-bold text-lg text-slate-900">2. اختر القالب الأساسي</h4>
-                  <p className="text-slate-500 text-sm leading-relaxed">اختر ما بين قالب الأناقة العصرية الفاخرة، أو قالب التكنولوجيا والابتكار الحركي.</p>
-                </div>
-
-                <div className="text-center space-y-4 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
-                  <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-md">
-                    <Paintbrush className="w-7 h-7" />
-                  </div>
-                  <h4 className="font-bold text-lg text-slate-900">3. خصص الهوية والمنتجات</h4>
-                  <p className="text-slate-500 text-sm leading-relaxed">غير الألوان والاسم والشعار، وأضف واحذف المنتجات مع رؤية النتيجة فوراً في معاينة تفاعلية حية.</p>
-                </div>
-              </div>
-            </div>
-          </section>}
+          <PlatformTemplatesSection onStart={() => checkRegistrationAndExecute("templates")} />
 
           {/* Pricing & Plans Section (الأسعار والباقات) */}
           {platformSettings.showPricing && <ServerPricingPlans onStart={() => checkRegistrationAndExecute("templates")} />}
 
-          <footer className="mt-20 shrink-0 border-t border-slate-800 bg-slate-900 py-10 text-slate-400">
-            <div className="container mx-auto flex flex-col items-center justify-between gap-6 px-6 sm:flex-row">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-sky-500 p-2 font-bold text-slate-950 shadow-md shadow-sky-500/20"><Store className="h-5 w-5" /></div>
-                <div className="text-right">
-                  <span className="block font-display text-base font-black text-white">{platformSettings.platformName}</span>
-                  {platformSettings.tagline && <span className="block text-[10px] text-slate-400">{platformSettings.tagline}</span>}
-                  <span className="block text-[10px] text-slate-500">© {new Date().getFullYear()}</span>
-                </div>
-              </div>
-              <div className="space-y-3 text-center text-xs text-slate-500 sm:text-left">
-                {(platformSettings.supportEmail || platformSettings.supportPhone || platformSettings.supportWhatsapp) && (
-                  <div className="flex flex-wrap justify-center gap-3 sm:justify-end" aria-label="قنوات دعم المنصة">
-                    {platformSettings.supportEmail && <a className="hover:text-white" dir="ltr" href={`mailto:${platformSettings.supportEmail}`}>{platformSettings.supportEmail}</a>}
-                    {platformSettings.supportPhone && <a className="hover:text-white" dir="ltr" href={`tel:${platformSettings.supportPhone}`}>{platformSettings.supportPhone}</a>}
-                    {platformSettings.supportWhatsapp && <a className="hover:text-white" href={`https://wa.me/${platformSettings.supportWhatsapp.slice(1)}`} target="_blank" rel="noreferrer">واتساب الدعم</a>}
-                  </div>
-                )}
-                <div className="font-medium">جميع الحقوق محفوظة لمنصة {platformSettings.platformName}</div>
-              </div>
-            </div>
-          </footer>
+          <PlatformLandingClosure
+            settings={platformSettings}
+            navigation={visiblePlatformNavigation}
+            user={authUser}
+            onNavigate={followPlatformNavigation}
+            onStart={() => window.location.assign(authUser ? "/app/new" : "/register")}
+            onLogin={() => window.location.assign("/login")}
+          />
         </div>
       )}
 

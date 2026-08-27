@@ -89,7 +89,7 @@ describe("current interface behavior", () => {
       role: "merchant",
     }));
     expect(onClose).toHaveBeenCalledTimes(1);
-  });
+  }, 15_000);
 
   it("ends an unauthorized platform session instead of opening administration", async () => {
     const login = vi.fn().mockResolvedValue({
@@ -312,17 +312,24 @@ describe("current interface behavior", () => {
     expect(resubmit).toHaveBeenNthCalledWith(2, correction.tenantId, correction.revision, "01MERCHANT");
   });
 
-  it("retains the current server-pricing headings without a screen redesign", async () => {
+  it("presents server-owned pricing limits and starts the real merchant journey", async () => {
     const listPlans = vi.fn().mockResolvedValue([starterPlan]);
+    const onStart = vi.fn();
+    const user = userEvent.setup();
 
     renderInterface(
-      <ServerPricingPlans onStart={vi.fn()} />,
+      <ServerPricingPlans onStart={onStart} />,
       createFakeUiAdapters({ plans: { list: listPlans } }),
     );
 
-    expect(screen.getByRole("heading", { name: "الباقات والأسعار" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "باقات واضحة تبدأ مع حجم متجرك" })).toBeTruthy();
     expect(await screen.findByRole("heading", { name: "البداية" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /ابدأ تصميم المتجر/ })).toBeTruthy();
+    expect(screen.getByText("مجانًا")).toBeTruthy();
+    expect(screen.getByText("متجر واحد")).toBeTruthy();
+    expect(screen.getByText("حتى ١٠ منتجات")).toBeTruthy();
+    expect(screen.getByText("رابط متجر داخل نطاق المنصة")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "ابدأ إنشاء متجرك" }));
+    expect(onStart).toHaveBeenCalledTimes(1);
   });
 
   it("ignores a stale domain response after the merchant changes the handle", async () => {

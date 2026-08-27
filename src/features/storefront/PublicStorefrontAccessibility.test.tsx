@@ -116,8 +116,10 @@ describe("public storefront acceptance boundary", () => {
     await user.keyboard("{Escape}");
     expect(screen.getByRole("dialog", { name: /سلة التسوق/ })).toBeTruthy();
     expect(background?.hasAttribute("inert")).toBe(true);
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(document.activeElement).toBe(trigger);
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
 
     await user.click(trigger);
     const reopenedDialog = screen.getByRole("dialog", { name: /سلة التسوق/ });

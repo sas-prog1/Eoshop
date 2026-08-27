@@ -1,21 +1,52 @@
 import React, { useEffect } from "react";
-import { ArrowLeft, Check, RefreshCw, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  CircleAlert,
+  RefreshCw,
+  ShieldCheck,
+  Store,
+} from "lucide-react";
+
+import { usePlatformSettings } from "../adapters/PlatformSettingsContext";
 import { useUiAdapters } from "../adapters/UiAdaptersContext";
 import type { StorePlan } from "../adapters/uiAdapters";
 import { useApiTask } from "../hooks/useApiTask";
-import { usePlatformSettings } from "../adapters/PlatformSettingsContext";
 
 interface ServerPricingPlansProps {
   onStart: () => void;
 }
 
-const featureLabels: Record<string, string> = {
-  platform_subdomain: "عنوان متجر داخل المنصة",
-  basic_theme: "القالب الأساسي",
-  unlimited_products: "منتجات غير محدودة بحسب الباقة",
-  priority_review: "أولوية في المراجعة",
-  multi_store: "إدارة أكثر من متجر",
+const verifiedFeatureLabels: Partial<Record<string, string>> = {
+  platform_subdomain: "رابط متجر داخل نطاق المنصة",
+  basic_theme: "قالب أساسي قابل للتخصيص",
 };
+
+function storeLimitLabel(plan: StorePlan) {
+  if (plan.maxStores === 1) return "متجر واحد";
+  return `حتى ${plan.maxStores.toLocaleString("ar-SA")} متاجر`;
+}
+
+function productLimitLabel(plan: StorePlan) {
+  if (plan.maxProducts === null) return "منتجات غير محدودة";
+  return `حتى ${plan.maxProducts.toLocaleString("ar-SA")} منتجات`;
+}
+
+function planPriceLabel(plan: StorePlan) {
+  if (plan.priceMinor === 0) return "مجانًا";
+
+  return new Intl.NumberFormat("ar-SA", {
+    style: "currency",
+    currency: plan.currency,
+    maximumFractionDigits: 0,
+  }).format(plan.priceMinor / 100);
+}
+
+function activationLabel(plan: StorePlan) {
+  return plan.activationMode === "automatic"
+    ? "تفعيل الباقة آلي بعد إنشاء الطلب؛ نشر المتجر يبقى خاضعًا للمراجعة والتجهيز."
+    : "تفعيل الباقة يتم بعد موافقة الإدارة؛ اختيارها لا يعني اكتمال دفع إلكتروني."
+}
 
 export default function ServerPricingPlans({ onStart }: ServerPricingPlansProps) {
   const { plans: planActions } = useUiAdapters();
@@ -28,44 +59,116 @@ export default function ServerPricingPlans({ onStart }: ServerPricingPlansProps)
   }, [plansTask.execute]);
 
   return (
-    <section id="pricing" className="scroll-mt-6 border-t border-slate-200/80 bg-slate-50 py-16 md:py-24">
-      <div className="container mx-auto px-6">
-        <div className="mx-auto mb-12 max-w-2xl space-y-4 text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-xs font-black text-indigo-800"><ShieldCheck className="h-4 w-4" /> باقات موثقة من خادم {platformSettings.platformName}</span>
-          <h2 className="font-display text-3xl font-black text-slate-900 md:text-4xl">الباقات والأسعار</h2>
-          <p className="text-sm leading-relaxed text-slate-600">اختيار الباقة المدفوعة يسجل طلبًا فقط؛ تفعيلها إداري في هذه المرحلة، ولم تُربط بوابة دفع إلكترونية بعد.</p>
+    <section
+      id="pricing"
+      className="scroll-mt-6 border-y border-[#d9d1c3] bg-[#eee9df] px-5 py-20 text-[#081725] sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+      aria-labelledby="platform-pricing-title"
+    >
+      <div className="mx-auto max-w-[1440px]">
+        <div className="grid items-end gap-8 border-b border-[#c4b9a7] pb-10 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.58fr)]">
+          <div className="text-right">
+            <p className="text-xs font-black tracking-[0.14em] text-[#806a42]">اختر ما يناسب مرحلة نشاطك</p>
+            <h2 id="platform-pricing-title" className="mt-4 max-w-3xl font-display text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl">
+              باقات واضحة تبدأ مع حجم متجرك
+            </h2>
+          </div>
+          <div className="max-w-xl text-right lg:justify-self-end">
+            <p className="text-sm font-medium leading-7 text-slate-600 sm:text-base">
+              الأسعار والحدود أدناه تأتي مباشرة من خادم {platformSettings.platformName}. اختر الباقة المناسبة داخل رحلة إنشاء المتجر قبل إرسال الطلب.
+            </p>
+            <span className="mt-4 inline-flex items-center gap-2 border border-[#bfa875] bg-[#f8f6f1] px-3 py-2 text-[11px] font-black text-[#6f592f]">
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" /> المزايا المعروضة هي المطبقة حاليًا
+            </span>
+          </div>
         </div>
 
-        {plansTask.loading && <div className="flex justify-center py-12 text-indigo-700"><RefreshCw className="h-7 w-7 animate-spin" /></div>}
+        {plansTask.loading && (
+          <div className="grid gap-5 py-12 lg:grid-cols-3" aria-label="جارٍ تحميل الباقات">
+            {[0, 1, 2].map((item) => (
+              <div key={item} className="h-[410px] animate-pulse border border-[#d4ccbf] bg-[#f8f6f1]" />
+            ))}
+          </div>
+        )}
+
         {plansTask.error && (
-          <div className="mx-auto flex max-w-xl flex-col items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-center text-sm font-bold text-rose-700">
+          <div className="mx-auto my-12 flex max-w-2xl flex-col items-center gap-4 border border-rose-200 bg-rose-50 px-6 py-8 text-center text-sm font-bold text-rose-800">
+            <CircleAlert className="h-7 w-7" aria-hidden="true" />
             <p>{plansTask.error.message}</p>
             {plansTask.canRetry && (
-              <button type="button" onClick={() => void plansTask.retry()} className="flex items-center gap-2 rounded-xl bg-rose-700 px-4 py-2 text-xs text-white">
-                <RefreshCw className="h-4 w-4" /> إعادة المحاولة
+              <button type="button" onClick={() => void plansTask.retry()} className="inline-flex min-h-11 items-center gap-2 bg-rose-800 px-5 text-xs text-white transition hover:bg-rose-900">
+                <RefreshCw className="h-4 w-4" aria-hidden="true" /> إعادة المحاولة
               </button>
             )}
           </div>
         )}
-        {!plansTask.loading && !plansTask.error && (
-          <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3">
-            {plans.map((plan) => (
-              <article key={plan.key} className={`flex flex-col rounded-3xl border bg-white p-7 shadow-sm ${plan.key === "pro" ? "border-2 border-amber-500 shadow-lg" : "border-slate-200"}`}>
-                <h3 className="text-xl font-black text-slate-950">{plan.name}</h3>
-                <div className="my-5 border-y border-slate-100 py-4">
-                  <span className="text-4xl font-black text-slate-950">{((plan.priceMinor ?? 0) / 100).toLocaleString("ar-SA")}</span>
-                  <span className="mr-2 text-xs font-bold text-slate-500">{plan.currency} / شهريًا</span>
-                </div>
-                <ul className="flex-1 space-y-3 text-xs text-slate-600">
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> حتى {plan.maxStores} {plan.maxStores === 1 ? "متجر" : "متاجر"}</li>
-                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> {plan.maxProducts === null ? "منتجات غير محدودة" : `حتى ${plan.maxProducts} منتجات`}</li>
-                  {plan.features.map((feature) => <li key={feature} className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> {featureLabels[feature] ?? feature}</li>)}
-                </ul>
-                <p className="mt-5 rounded-xl bg-slate-50 p-3 text-[11px] font-bold text-slate-600">{plan.activationMode === "automatic" ? "تفعيل آلي للباقة بعد إنشاء الطلب." : "يتطلب تفعيلًا يدويًا من الإدارة؛ لا توجد مطالبة بدفع ناجح."}</p>
-                <button onClick={onStart} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3 text-xs font-black text-white hover:bg-slate-800">ابدأ تصميم المتجر <ArrowLeft className="h-4 w-4" /></button>
-              </article>
-            ))}
+
+        {!plansTask.loading && !plansTask.error && plans.length === 0 && (
+          <div className="mx-auto my-12 max-w-2xl border border-[#cfc6b6] bg-[#f8f6f1] px-6 py-10 text-center">
+            <Store className="mx-auto h-8 w-8 text-[#806a42]" aria-hidden="true" />
+            <h3 className="mt-4 text-lg font-black">الباقات قيد التجهيز</h3>
+            <p className="mt-2 text-sm font-medium leading-7 text-slate-600">لم ينشر مدير المنصة باقات متاحة بعد. يمكنك العودة لاحقًا أو التواصل مع الدعم.</p>
           </div>
+        )}
+
+        {!plansTask.loading && !plansTask.error && plans.length > 0 && (
+          <>
+            <div className="mt-12 grid gap-5 lg:grid-cols-3">
+              {plans.map((plan, index) => {
+                const verifiedFeatures = plan.features
+                  .map((feature) => verifiedFeatureLabels[feature])
+                  .filter((feature): feature is string => Boolean(feature));
+                const isGrowthPlan = plan.key === "pro";
+
+                return (
+                  <article
+                    key={plan.key}
+                    className={`relative flex min-h-[430px] flex-col border p-7 text-right sm:p-8 ${isGrowthPlan ? "border-[#b79a61] bg-[#081725] text-white shadow-[0_24px_60px_rgba(8,23,37,0.18)]" : "border-[#cec5b6] bg-[#f8f6f1] text-[#081725]"}`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className={`text-[10px] font-black tracking-[0.12em] ${isGrowthPlan ? "text-[#d5bd87]" : "text-[#806a42]"}`}>الباقة {String(index + 1).padStart(2, "0")}</p>
+                        <h3 className="mt-3 text-2xl font-black">{plan.name}</h3>
+                      </div>
+                      {isGrowthPlan && <span className="border border-[#d5bd87] px-3 py-1.5 text-[10px] font-black text-[#e4cf9f]">للمتجر المتنامي</span>}
+                    </div>
+
+                    <div className={`my-7 border-y py-5 ${isGrowthPlan ? "border-white/15" : "border-[#ded6ca]"}`}>
+                      <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+                        <span className="font-display text-4xl font-black leading-none sm:text-5xl">{planPriceLabel(plan)}</span>
+                        {plan.priceMinor > 0 && <span className={`pb-1 text-xs font-bold ${isGrowthPlan ? "text-slate-300" : "text-slate-500"}`}>شهريًا</span>}
+                      </div>
+                    </div>
+
+                    <ul className={`flex-1 space-y-4 text-sm font-bold ${isGrowthPlan ? "text-slate-200" : "text-slate-700"}`}>
+                      {[storeLimitLabel(plan), productLimitLabel(plan), ...verifiedFeatures].map((item) => (
+                        <li key={item} className="flex items-start gap-3">
+                          <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center border ${isGrowthPlan ? "border-[#d5bd87] text-[#d5bd87]" : "border-[#b79a61] text-[#806a42]"}`}>
+                            <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                          </span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <p className={`mt-7 border-r-2 px-4 py-1 text-[11px] font-bold leading-6 ${isGrowthPlan ? "border-[#d5bd87] text-slate-300" : "border-[#b79a61] text-slate-600"}`}>
+                      {activationLabel(plan)}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="mt-8 flex flex-col items-start justify-between gap-5 border border-[#cfc6b6] bg-[#f8f6f1] px-6 py-6 sm:flex-row sm:items-center sm:px-8">
+              <div className="text-right">
+                <p className="text-base font-black">ستختار الباقة وتراجع شروطها داخل رحلة إنشاء المتجر.</p>
+                <p className="mt-1 text-xs font-medium leading-6 text-slate-500">لا يتم تحصيل دفع إلكتروني من هذه الصفحة، ولا يصبح المتجر منشورًا بمجرد اختيار الباقة.</p>
+              </div>
+              <button type="button" onClick={onStart} className="group inline-flex min-h-12 shrink-0 items-center justify-center gap-3 bg-[#b18a46] px-6 text-sm font-black text-white transition hover:bg-[#957239]">
+                <span>ابدأ إنشاء متجرك</span>
+                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" aria-hidden="true" />
+              </button>
+            </div>
+          </>
         )}
       </div>
     </section>
