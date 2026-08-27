@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Work Package | WP 5.23 — Store application dossier, evidence and correction |
-| Status | Local gates complete; protected delivery in progress |
+| Status | Complete, merged and deployed to the retained Pilot |
 | Verified | 2026-08-27 |
 | Branch | `codex/wp-5.23-store-application-dossier` |
 | Base | `4a40e0d` |
@@ -43,7 +43,15 @@
 
 ## Delivery evidence
 
-Implementation commit, pull request, required CI, merge and retained-Pilot facts will be appended during T5 closeout.
+- Implementation commit: `7345a53b2294a5d63e142dedb985e8842b34c0cf`.
+- Protected pull request: [#70](https://github.com/sas-prog1/Eoshop/pull/70).
+- Required CI run: [33064450924](https://github.com/sas-prog1/Eoshop/actions/runs/33064450924).
+- Required checks: Repository safety PASS (24s), Frontend quality PASS (57s), Backend quality PASS (1m02s), Container integration PASS (5m26s).
+- Squash merge commit on protected `main`: `5b8d86fb93a361f221fae4add3cce703c7c8be66`.
+- Retained Pilot deployment: backend/worker/scheduler `eoshop/backend:wp523-pilot-final` (`sha256:91c75297d2bcd1b9e45d3e7467e97e9c99851bbf97e3576409e14cef5eae7701`); web `eoshop/web:wp523-pilot-final` (`sha256:2422a9de786ba6b0303c2aa03132e16f2ff363f069efacd470269cbceef0aaac`).
+- Pilot database container `c7b4b6f464a7` and both persistent volumes were retained. The dossier migration is recorded as batch 4 and all five services are running; backend and web are healthy.
+- Pilot HTTP verification: `/up` and `/` returned 200; served assets are `index-Dyx31a39.js` and `index-CZjnDAZG.css`.
+- Deployed-bundle verification: the served JavaScript contains the dossier-ready and targeted-correction controls. Authenticated dossier read/upload/exemption/download routes are present in the deployed backend.
 
 ## Rollback
 

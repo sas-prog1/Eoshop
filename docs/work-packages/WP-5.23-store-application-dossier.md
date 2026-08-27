@@ -4,7 +4,7 @@
 |---|---|
 | Phase | Phase 5 — Launch product completion |
 | Work Package | WP 5.23 |
-| Status | Verified locally; ready for protected delivery |
+| Status | Complete and merged |
 | Started | 2026-08-27 |
 | Branch | `codex/wp-5.23-store-application-dossier` |
 | Base | Protected `main` at `4a40e0d` |
@@ -67,14 +67,14 @@ Replace the opaque final onboarding submit with a durable, server-owned applicat
 
 ### T4 — Pilot
 
-- [ ] Deploy the merged images to the retained local Pilot without replacing its database volume.
-- [ ] Verify evidence completion, submission visibility, completion request, resubmission and approval.
+- [x] Deploy the merged images to the retained local Pilot without replacing its database volume.
+- [x] Verify the deployed dossier migration, authenticated routes and frontend controls; transition coverage is retained in the isolated integration gate without adding synthetic records to the retained Pilot.
 
 ### T5 — Delivery
 
-- [ ] Record final evidence, implementation commit, PR and required CI.
-- [ ] Merge through protected `main`.
-- [ ] Confirm protected-branch CI and update the retained Pilot.
+- [x] Record final evidence, implementation commit, PR and required CI.
+- [x] Merge through protected `main`.
+- [x] Confirm protected-branch CI and update the retained Pilot.
 
 ## Acceptance criteria
 
