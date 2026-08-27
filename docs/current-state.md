@@ -31,15 +31,16 @@ Eoshop has a server-authoritative commerce core, a repeatable local Pilot and a 
 - WP 5.21: public-storefront loading/error semantics, keyboard and cart/checkout focus behavior, reduced motion, readable merchant colors, secure local-HTTP request identity and verified 320–1440 px reflow.
 - WP 5.22: one canonical, permission-aware merchant launch console backed by tenant database aggregates and existing operational modules, verified and merged.
 - WP 5.23: server-owned store application requirements, private evidence, a durable review timeline and targeted correction/resubmission, verified, merged and deployed to the retained Pilot.
+- WP 5.24: detailed platform application review, required-evidence decisions and tenant/domain/subscription/provisioning/publication operations are implemented and in protected delivery verification.
 
 ## Active
 
-- No open implementation package; WP 5.24 is the next approved package.
+- WP 5.24 implementation is locally verified; protected CI, merge and retained-Pilot update remain open.
 
 ## Approved next sequence
 
-1. Implement WP 5.24 platform application-review workspace and active-store operations view on the dossier contract.
-2. Add only the launch-required merchant/platform management gaps, then run the connected-system acceptance review.
+1. Close WP 5.24 through protected CI, merge and retained-Pilot verification.
+2. Implement WP 5.25 launch-required commerce-management gaps without widening the release boundary.
 3. Restore richer appearance options through bounded server-owned contracts before broader visual refinement.
 4. Complete local-market payment verification/notifications, then continue to Phase 6 staging, observability, backup and scale work.
 

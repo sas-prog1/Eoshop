@@ -60,5 +60,8 @@ describe("safe return target", () => {
     const operator = { ...merchant, role: "admin" as const, platformPermissions: ["platform.users.manage"] };
     expect(authorizeReturnTarget("/admin/users", operator, [])).toBe("/admin/users");
     expect(authorizeReturnTarget("/admin/audit", operator, [])).toBe("/admin/users");
+    const storeReviewer = { ...merchant, role: "admin" as const, platformPermissions: ["platform.stores.view"] };
+    expect(readSafeReturnTarget(`?returnTo=/admin/stores/${tenantId}`)).toBe(`/admin/stores/${tenantId}`);
+    expect(authorizeReturnTarget(`/admin/stores/${tenantId}`, storeReviewer, [])).toBe(`/admin/stores/${tenantId}`);
   });
 });

@@ -55,6 +55,69 @@ const platformUser = {
   createdAt: "2026-08-21T09:00:00Z",
 };
 
+const storeDetail = {
+  ...store,
+  applicationWorkspace: {
+    snapshot: {
+      draftId: "draft-test",
+      revision: 4,
+      submittedAt: "2026-08-27T10:00:00Z",
+      storeName: store.storeName,
+      businessType: store.businessType,
+      themeStyle: store.themeStyle,
+      handle: "store-test",
+      planKey: "pro",
+      planName: "Pro",
+      config: { storeName: store.storeName, slogan: "Frozen submission" },
+    },
+    dossier: {
+      draftId: "draft-test",
+      tenantId: store.id,
+      draftRevision: 4,
+      ready: true,
+      reviewReady: false,
+      blockers: [],
+      reviewBlockers: ["owner_identity"],
+      requirements: [{
+        key: "owner_identity",
+        label: "Owner identity",
+        description: "Private evidence",
+        uploadRequired: true,
+        allowExemption: false,
+        resolved: true,
+        evidence: {
+          id: "00000000-0000-4000-8000-000000000001",
+          resolution: "uploaded",
+          reviewStatus: "pending",
+          originalName: "identity.pdf",
+          mimeType: "application/pdf",
+          byteSize: 1024,
+          exemptionReason: null,
+          uploadedAt: "2026-08-27T09:00:00Z",
+          downloadUrl: `/api/admin/stores/${store.id}/application/evidence/00000000-0000-4000-8000-000000000001`,
+        },
+      }],
+      correctionRequest: null,
+      timeline: [],
+    },
+    checklist: [{ key: "owner_identity", label: "Owner identity", status: "pending", resolved: true }],
+    decisionReady: false,
+  },
+  operations: {
+    tenant: { id: store.id, schemaName: "tenant_store_test" },
+    health: { review: false, provisioning: false, domain: true, subscription: false, publication: false },
+    blockers: ["review_not_approved"],
+    provisioning: null,
+    publication: {
+      status: "requested",
+      requestedAt: "2026-08-27T10:00:00Z",
+      publishedAt: null,
+      requestedDomain: store.requestedDomain,
+      publicDomain: null,
+    },
+  },
+};
+
 describe("adminApi", () => {
   it("loads authoritative platform stores with same-origin credentials", async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({
@@ -70,6 +133,24 @@ describe("adminApi", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/admin/stores?attention=review&page=2", expect.objectContaining({
       credentials: "same-origin",
     }));
+  });
+
+  it("maps the strict review workspace and sends bounded evidence decisions", async () => {
+    const fetchMock = vi.fn((path: string, _options?: RequestInit) => Promise.resolve(path === "/api/auth/csrf"
+      ? new Response(JSON.stringify({ csrf_token: "evidence-csrf" }), { status: 200 })
+      : new Response(JSON.stringify({ data: { ...storeDetail, databasePassword: "must-not-escape" } }), { status: 200 })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const detail = await adminApi.getStore(store.id);
+    expect(detail.applicationWorkspace?.snapshot.config).toEqual({ storeName: store.storeName, slogan: "Frozen submission" });
+    expect(detail.applicationWorkspace?.decisionReady).toBe(false);
+    expect(detail.operations.tenant.schemaName).toBe("tenant_store_test");
+    expect(detail).not.toHaveProperty("databasePassword");
+
+    await adminApi.reviewStoreEvidence(store.id, "00000000-0000-4000-8000-000000000001", "rejected", "Image is incomplete");
+    const mutation = fetchMock.mock.calls.find(([path]) => path.includes("/application/evidence/"));
+    expect(mutation?.[0]).toBe(`/api/admin/stores/${store.id}/application/evidence/00000000-0000-4000-8000-000000000001`);
+    expect(JSON.parse((mutation?.[1] as RequestInit).body as string)).toEqual({ status: "rejected", note: "Image is incomplete" });
   });
 
   it("maps the overview and allowlisted audit projection", async () => {

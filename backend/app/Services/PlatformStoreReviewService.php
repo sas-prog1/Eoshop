@@ -48,6 +48,9 @@ class PlatformStoreReviewService
                 Gate::forUser($actor)->authorize('changeStatus', [$lockedTenant, $status]);
 
                 $previousStatus = TenantVerificationStatus::from((string) $lockedTenant->getAttribute('verification_status'));
+                if ($previousStatus === TenantVerificationStatus::Pending && $status === TenantVerificationStatus::Approved) {
+                    $this->applications->assertReviewReady($lockedTenant);
+                }
                 if ($previousStatus === TenantVerificationStatus::Pending && $status === TenantVerificationStatus::ChangesRequested) {
                     $this->drafts->markCorrectionRequired($lockedTenant);
                     $this->publications->reject($lockedTenant, $actor, $normalizedReason);

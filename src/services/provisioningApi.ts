@@ -235,7 +235,7 @@ function nullableNumberField(dto: Record<string, unknown>, key: string, context:
   return value;
 }
 
-function mapApplication(value: unknown): StoreApplicationDossier {
+export function mapApplication(value: unknown): StoreApplicationDossier {
   const dto = record(value, "ملف طلب المتجر");
   if (!Array.isArray(dto.requirements) || !Array.isArray(dto.timeline)) {
     throw new ApiError("استجابة ملف طلب المتجر غير مكتملة.", "unexpected", 200);

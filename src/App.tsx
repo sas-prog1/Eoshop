@@ -25,7 +25,7 @@ import MerchantStoreOperations from "./components/MerchantStoreOperations";
 import PlatformAdminConsole from "./components/PlatformAdminConsole";
 import { canAccessPlatformConsole, safeAdminSection, type AdminSection } from "./features/admin/adminAccess";
 import { useUiAdapters } from "./adapters/UiAdaptersContext";
-import { adminPath, merchantStorePath, parseCentralRoute, pushCentralPath, replaceCentralPath, type MerchantStoreSection } from "./app/centralNavigation";
+import { adminPath, adminStorePath, merchantStorePath, parseCentralRoute, pushCentralPath, replaceCentralPath, type MerchantStoreSection } from "./app/centralNavigation";
 import {
   isUiError,
   isUiErrorCode,
@@ -86,6 +86,7 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAdminAuthModalOpen, setIsAdminAuthModalOpen] = useState(false);
   const [adminSection, setAdminSection] = useState<AdminSection>("overview");
+  const [adminStoreId, setAdminStoreId] = useState<string | undefined>();
   const [adminSettingsDirty, setAdminSettingsDirty] = useState(false);
   const adminSettingsDirtyRef = useRef(false);
   
@@ -282,6 +283,7 @@ export default function App() {
 
         if (initialRoute.name === "admin") {
           setAdminSection(initialRoute.section);
+          setAdminStoreId(initialRoute.storeId);
           setIsAdminAuthModalOpen(false);
           setIsAdminOpen(true);
           return;
@@ -1257,7 +1259,7 @@ export default function App() {
   useEffect(() => {
     if (!isCentralFrontendHost(window.location.hostname)) return;
     const handlePopState = () => {
-      const currentAdminPath = adminPath(adminSection);
+      const currentAdminPath = adminStoreId ? adminStorePath(adminStoreId) : adminPath(adminSection);
       if (isAdminOpen && adminSettingsDirtyRef.current && window.location.pathname !== currentAdminPath) {
         const confirmed = window.confirm("توجد تعديلات غير محفوظة في إعدادات المنصة. مغادرة الصفحة ستتجاهلها. هل تريد المتابعة؟");
         if (!confirmed) {
@@ -1273,6 +1275,7 @@ export default function App() {
       }
       if (route.name === "admin") {
         setAdminSection(route.section);
+        setAdminStoreId(route.storeId);
         if (authUser) {
           setIsAdminAuthModalOpen(false);
           setIsAdminOpen(true);
@@ -1329,7 +1332,7 @@ export default function App() {
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [adminSection, authUser, isAdminOpen, merchantStores, activeWorkspace, merchantStoreRoute, recoverableWorkspaceChanges, view]);
+  }, [adminSection, adminStoreId, authUser, isAdminOpen, merchantStores, activeWorkspace, merchantStoreRoute, recoverableWorkspaceChanges, view]);
 
   const focusedBuilderTask = activeWorkspace && merchantStoreRoute
     ? ({
@@ -2549,12 +2552,24 @@ export default function App() {
         <PlatformAdminConsole
           user={authUser}
           section={adminSection}
+          storeId={adminStoreId}
           onNavigate={(section) => {
             setAdminSection(section);
+            setAdminStoreId(undefined);
             pushCentralPath(adminPath(section));
+          }}
+          onOpenStore={(storeId) => {
+            setAdminSection("stores");
+            setAdminStoreId(storeId);
+            pushCentralPath(adminStorePath(storeId));
+          }}
+          onCloseStore={() => {
+            setAdminStoreId(undefined);
+            pushCentralPath(adminPath("stores"));
           }}
           onExit={() => {
             updateAdminSettingsDirty(false);
+            setAdminStoreId(undefined);
             setIsAdminOpen(false);
             setView("landing");
             replaceCentralPath("/");
@@ -2568,6 +2583,7 @@ export default function App() {
             }
             setAuthUser(null);
             updateAdminSettingsDirty(false);
+            setAdminStoreId(undefined);
             setIsAdminOpen(false);
             resetTenantOwnedState();
             setView("landing");

@@ -1,9 +1,10 @@
 import type { UserProfile, StoreSubmission } from "../adapters/uiAdapters";
-import { adminPath, merchantStorePath, parseCentralRoute } from "./centralNavigation";
+import { adminPath, adminStorePath, merchantStorePath, parseCentralRoute } from "./centralNavigation";
 import { safeAdminSection } from "../features/admin/adminAccess";
 
 const ulid = "[0-9a-hjkmnp-tv-z]{26}";
 const allowedStorePath = new RegExp(`^/app/stores/${ulid}(?:/(?:overview|products|orders|inventory|design|checkout|pages|correction))?$`);
+const allowedAdminStorePath = new RegExp(`^/admin/stores/${ulid}$`);
 const literalPaths = new Set([
   "/app", "/app/account", "/app/new", "/app/new/design", "/app/new/review",
   "/admin", "/admin/stores", "/admin/users", "/admin/settings", "/admin/audit",
@@ -16,7 +17,7 @@ export function readSafeReturnTarget(search: string): string | null {
   const target = values[0];
   if (!target || target.length > 256 || target.includes("?") || target.includes("#") || target.includes("\\")
     || target.includes("%") || target.startsWith("//") || !target.startsWith("/")) return null;
-  if (!literalPaths.has(target) && !allowedStorePath.test(target)) return null;
+  if (!literalPaths.has(target) && !allowedStorePath.test(target) && !allowedAdminStorePath.test(target)) return null;
   return parseCentralRoute(target).name === "unknown" ? null : target;
 }
 
@@ -25,7 +26,7 @@ export function authorizeReturnTarget(target: string | null, user: UserProfile, 
   const route = parseCentralRoute(target);
   if (route.name === "admin") {
     const allowed = safeAdminSection(route.section, user);
-    if (allowed === route.section) return adminPath(route.section);
+    if (allowed === route.section) return route.storeId ? adminStorePath(route.storeId) : adminPath(route.section);
     const fallback = safeAdminSection("overview", user);
     return fallback ? adminPath(fallback) : "/app";
   }

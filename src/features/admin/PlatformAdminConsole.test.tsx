@@ -405,16 +405,17 @@ describe("PlatformAdminConsole", () => {
 
   it("fails closed and removes store actions when a mutation returns 403", async () => {
     const updateStoreStatus = vi.fn().mockRejectedValue(new UiAdapterError("لم تعد مخولًا", "forbidden"));
+    const rejectedStore = { ...pendingStore, verificationStatus: "rejected" as const };
     const user = userEvent.setup();
 
     render(
       <UiAdaptersProvider adapters={createFakeUiAdapters({ administration: {
         overview: vi.fn().mockResolvedValue(overview),
-        listStores: vi.fn().mockResolvedValue(storePage([pendingStore])),
+        listStores: vi.fn().mockResolvedValue(storePage([rejectedStore])),
         updateStoreStatus,
       } })}>
         <PlatformAdminConsole
-          user={operator(["platform.stores.view", "platform.stores.review"])}
+          user={operator(["platform.stores.view", "platform.stores.manage"])}
           section="stores"
           onNavigate={vi.fn()}
           onExit={vi.fn()}
@@ -425,26 +426,27 @@ describe("PlatformAdminConsole", () => {
       </UiAdaptersProvider>,
     );
 
-    await user.click(await screen.findByRole("button", { name: "قبول" }));
+    await user.click(await screen.findByRole("button", { name: "إعادة للمراجعة" }));
     await waitFor(() => expect(updateStoreStatus).toHaveBeenCalledTimes(1));
     expect(await screen.findByRole("heading", { name: "تم سحب صلاحية هذا القسم" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "قبول" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "إعادة للمراجعة" })).toBeNull();
   });
 
   it("serializes store mutations globally while a deferred operation is pending", async () => {
     let resolveMutation!: (store: PlatformStore) => void;
     const updateStoreStatus = vi.fn(() => new Promise<PlatformStore>((resolve) => { resolveMutation = resolve; }));
-    const secondStore = { ...pendingStore, id: "store-two", storeName: "متجر الاختبار الثاني" };
+    const rejectedStore = { ...pendingStore, verificationStatus: "rejected" as const };
+    const secondStore = { ...rejectedStore, id: "store-two", storeName: "متجر الاختبار الثاني" };
     const user = userEvent.setup();
 
     render(
       <UiAdaptersProvider adapters={createFakeUiAdapters({ administration: {
         overview: vi.fn().mockResolvedValue(overview),
-        listStores: vi.fn().mockResolvedValue(storePage([pendingStore, secondStore])),
+        listStores: vi.fn().mockResolvedValue(storePage([rejectedStore, secondStore])),
         updateStoreStatus,
       } })}>
         <PlatformAdminConsole
-          user={operator(["platform.stores.view", "platform.stores.review"])}
+          user={operator(["platform.stores.view", "platform.stores.manage"])}
           section="stores"
           onNavigate={vi.fn()}
           onExit={vi.fn()}
@@ -455,14 +457,14 @@ describe("PlatformAdminConsole", () => {
       </UiAdaptersProvider>,
     );
 
-    const acceptButtons = await screen.findAllByRole("button", { name: "قبول" });
-    await user.click(acceptButtons[0]);
+    const reopenButtons = await screen.findAllByRole("button", { name: "إعادة للمراجعة" });
+    await user.click(reopenButtons[0]);
     await waitFor(() => expect(updateStoreStatus).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(acceptButtons.every((button) => (button as HTMLButtonElement).disabled)).toBe(true));
-    await user.click(acceptButtons[1]);
+    await waitFor(() => expect(reopenButtons.every((button) => (button as HTMLButtonElement).disabled)).toBe(true));
+    await user.click(reopenButtons[1]);
     expect(updateStoreStatus).toHaveBeenCalledTimes(1);
 
-    resolveMutation({ ...pendingStore, verificationStatus: "approved" });
-    await waitFor(() => expect((screen.getAllByRole("button", { name: "قبول" })[0] as HTMLButtonElement).disabled).toBe(false));
+    resolveMutation({ ...rejectedStore, verificationStatus: "pending" });
+    await waitFor(() => expect((screen.getAllByRole("button", { name: "إعادة للمراجعة" })[0] as HTMLButtonElement).disabled).toBe(false));
   });
 });

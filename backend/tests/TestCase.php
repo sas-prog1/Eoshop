@@ -73,7 +73,7 @@ abstract class TestCase extends BaseTestCase
             'tenant_id' => null,
             'requirement_key' => 'owner_identity',
             'resolution' => ApplicationEvidenceResolution::Uploaded,
-            'review_status' => ApplicationEvidenceReviewStatus::Pending,
+            'review_status' => ApplicationEvidenceReviewStatus::Accepted,
             'original_name' => 'identity.pdf',
             'disk' => 'local',
             'path' => 'integration-fixtures/'.$draft->getKey().'/identity.pdf',
@@ -89,7 +89,7 @@ abstract class TestCase extends BaseTestCase
             'tenant_id' => null,
             'requirement_key' => 'commercial_registration',
             'resolution' => ApplicationEvidenceResolution::Exempted,
-            'review_status' => ApplicationEvidenceReviewStatus::Pending,
+            'review_status' => ApplicationEvidenceReviewStatus::Accepted,
             'exemption_reason' => 'Integration fixture for an unregistered small retail activity.',
         ]);
     }

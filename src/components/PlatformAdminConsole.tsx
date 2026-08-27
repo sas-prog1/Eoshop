@@ -46,6 +46,7 @@ import {
 } from "../features/admin/adminAccess";
 import PlatformUsersPanel from "../features/admin/PlatformUsersPanel";
 import PlatformSettingsPanel from "../features/admin/PlatformSettingsPanel";
+import PlatformStoreWorkspace from "../features/admin/PlatformStoreWorkspace";
 import { usePlatformSettings } from "../adapters/PlatformSettingsContext";
 import SkipLink from "./SkipLink";
 import { isProvisioningTransition, useLifecyclePolling } from "../features/provisioning/useLifecyclePolling";
@@ -53,7 +54,10 @@ import { isProvisioningTransition, useLifecyclePolling } from "../features/provi
 interface PlatformAdminConsoleProps {
   user: UserProfile;
   section: AdminSection;
+  storeId?: string;
   onNavigate: (section: AdminSection) => void;
+  onOpenStore?: (storeId: string) => void;
+  onCloseStore?: () => void;
   onExit: () => void;
   onLogout: () => Promise<void>;
   onSessionExpired: () => void;
@@ -158,7 +162,10 @@ function Pagination({
 export default function PlatformAdminConsole({
   user,
   section,
+  storeId,
   onNavigate,
+  onOpenStore = () => undefined,
+  onCloseStore = () => undefined,
   onExit,
   onLogout,
   onSessionExpired,
@@ -481,7 +488,7 @@ export default function PlatformAdminConsole({
         <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl font-black">{activeSection === "overview" ? "النظرة التشغيلية" : activeSection === "stores" ? "إدارة المتاجر" : activeSection === "users" ? "إدارة مستخدمي المنصة" : activeSection === "settings" ? "إعدادات المنصة" : "سجل التدقيق"}</h1>
+              <h1 className="text-xl font-black">{activeSection === "overview" ? "النظرة التشغيلية" : activeSection === "stores" ? storeId ? "ملف المتجر التشغيلي" : "إدارة المتاجر" : activeSection === "users" ? "إدارة مستخدمي المنصة" : activeSection === "settings" ? "إعدادات المنصة" : "سجل التدقيق"}</h1>
               <p className="mt-1 text-xs text-slate-500">بيانات مركزية محمية بصلاحيات الخادم</p>
             </div>
             <div className="flex items-center gap-2">
@@ -537,7 +544,16 @@ export default function PlatformAdminConsole({
             </section>
           )}
 
-          {activeSection === "stores" && canStores && !storesForbidden && (
+          {activeSection === "stores" && canStores && !storesForbidden && (storeId ? (
+            <PlatformStoreWorkspace
+              administration={administration}
+              storeId={storeId}
+              user={user}
+              onBack={onCloseStore}
+              onSessionExpired={onSessionExpired}
+              onToast={onToast}
+            />
+          ) : (
             <section className="mx-auto max-w-7xl space-y-4">
               <form onSubmit={(event) => { event.preventDefault(); setStoreQuery((current) => ({ ...current, search: storeSearch.trim() || undefined, page: 1 })); }} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-5">
                 <label className="relative md:col-span-2">
@@ -564,6 +580,7 @@ export default function PlatformAdminConsole({
                       busy={mutationPending}
                       canReview={canReview}
                       canManage={canManage}
+                      onOpen={() => onOpenStore(storeRecord.id)}
                       onStatus={(status, decisionReason) => updateStatus(storeRecord, status, decisionReason)}
                       onReason={(status) => { setReasonDecision({ store: storeRecord, status }); setRequestedFields(status === "changes_requested" ? ["business.store_name"] : []); }}
                       onRetry={() => runMutation(storeRecord, () => administration.retryProvisioning(storeRecord.id), "تمت جدولة إعادة تجهيز المتجر.")}
@@ -576,7 +593,7 @@ export default function PlatformAdminConsole({
               </div>
               <Pagination value={stores.pagination} onPage={(page) => setStoreQuery((current) => ({ ...current, page }))} />
             </section>
-          )}
+          ))}
 
           {activeSection === "users" && canUsers && (
             <PlatformUsersPanel
@@ -692,6 +709,7 @@ interface StoreCardProps {
   busy: boolean;
   canReview: boolean;
   canManage: boolean;
+  onOpen: () => void;
   onStatus: (status: VerificationStatus, reason?: string) => Promise<void>;
   onReason: (status: "changes_requested" | "rejected" | "suspended") => void;
   onRetry: () => Promise<void>;
@@ -700,7 +718,7 @@ interface StoreCardProps {
   onUnpublish: () => Promise<void>;
 }
 
-function StoreCard({ store, busy, canReview, canManage, onStatus, onReason, onRetry, onActivate, onPublish, onUnpublish }: StoreCardProps) {
+function StoreCard({ store, busy, canReview, canManage, onOpen, onStatus, onReason, onRetry, onActivate, onPublish, onUnpublish }: StoreCardProps) {
   const subscriptionNeedsAction = store.subscription?.status === "pending_activation" || store.subscription?.status === "expired" || (store.subscription?.status === "active" && Boolean(store.subscription.endsAt) && new Date(store.subscription.endsAt as string).getTime() <= Date.now());
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -711,7 +729,8 @@ function StoreCard({ store, busy, canReview, canManage, onStatus, onReason, onRe
       {store.rejectionReason && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-xs text-rose-800">السبب: {store.rejectionReason}</p>}
       {store.publicDomain && store.publicationStatus === "published" && <a href={publicStoreUrl(store.publicDomain)} target="_blank" rel="noreferrer" className="mt-3 flex items-center gap-1 text-xs font-bold text-emerald-700"><ExternalLink className="h-4 w-4" /> فتح المتجر المنشور</a>}
       <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-        {store.verificationStatus === "pending" && canReview && <><button disabled={busy} type="button" onClick={() => { void onStatus("approved").catch(() => undefined); }} className="flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"><CheckCircle2 className="h-4 w-4" /> قبول</button><button disabled={busy} type="button" onClick={() => onReason("changes_requested")} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-slate-950 disabled:opacity-50">طلب استكمال</button><button disabled={busy} type="button" onClick={() => onReason("rejected")} className="flex items-center gap-1 rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"><XCircle className="h-4 w-4" /> رفض نهائي</button></>}
+        <button type="button" onClick={onOpen} className="flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white"><ExternalLink className="h-4 w-4" /> {store.verificationStatus === "pending" ? "فتح ملف الطلب" : "فتح التشغيل"}</button>
+        {store.verificationStatus === "pending" && canReview && <span className="rounded-xl bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-800">القرار متاح داخل ملف الطلب بعد مراجعة البيانات والوثائق.</span>}
         {store.verificationStatus === "approved" && canManage && <button disabled={busy} type="button" onClick={() => onReason("suspended")} className="flex items-center gap-1 rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"><Ban className="h-4 w-4" /> تعليق</button>}
         {store.verificationStatus === "suspended" && canManage && <button disabled={busy} type="button" onClick={() => { void onStatus("approved").catch(() => undefined); }} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">إعادة التفعيل</button>}
         {store.verificationStatus === "rejected" && canManage && <button disabled={busy} type="button" onClick={() => { void onStatus("pending").catch(() => undefined); }} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold disabled:opacity-50">إعادة للمراجعة</button>}

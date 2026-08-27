@@ -11,6 +11,7 @@ use App\Models\StoreCorrectionRequest;
 use App\Models\StoreDraft;
 use App\Models\Tenant;
 use App\Models\User;
+use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -57,6 +58,15 @@ class StoreApplicationService
                 ];
             })->values()->all();
         $ready = collect($requirements)->every(fn (array $requirement): bool => $requirement['resolved']);
+        $reviewBlockers = collect($requirements)
+            ->filter(function (array $requirement): bool {
+                $evidence = $requirement['evidence'];
+
+                return ! $requirement['resolved']
+                    || ! is_array($evidence)
+                    || $evidence['reviewStatus'] !== ApplicationEvidenceReviewStatus::Accepted->value;
+            })
+            ->pluck('key')->values()->all();
         $correction = $draft->openCorrectionRequest;
 
         return [
@@ -64,9 +74,11 @@ class StoreApplicationService
             'tenantId' => $draft->getAttribute('tenant_id'),
             'draftRevision' => (int) $draft->getAttribute('revision'),
             'ready' => $ready,
+            'reviewReady' => $ready && $reviewBlockers === [],
             'blockers' => collect($requirements)
                 ->reject(fn (array $requirement): bool => $requirement['resolved'])
                 ->pluck('key')->values()->all(),
+            'reviewBlockers' => $reviewBlockers,
             'requirements' => $requirements,
             'correctionRequest' => $correction instanceof StoreCorrectionRequest ? [
                 'id' => $correction->getKey(),
@@ -79,6 +91,99 @@ class StoreApplicationService
             ] : null,
             'timeline' => $this->timeline($draft),
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public function platformSummary(StoreDraft $draft): array
+    {
+        $summary = $this->summary($draft);
+        $summary['requirements'] = collect($summary['requirements'])
+            ->map(function (array $requirement) use ($draft): array {
+                if (is_array($requirement['evidence']) && $requirement['evidence']['downloadUrl'] !== null) {
+                    $requirement['evidence']['downloadUrl'] = '/api/admin/stores/'
+                        .$draft->getAttribute('tenant_id').'/application/evidence/'
+                        .$requirement['evidence']['id'];
+                }
+
+                return $requirement;
+            })->all();
+
+        return $summary;
+    }
+
+    public function assertReviewReady(Tenant $tenant): void
+    {
+        $draft = StoreDraft::query()->where('tenant_id', $tenant->getKey())->lockForUpdate()->first();
+        if (! $draft instanceof StoreDraft) {
+            return;
+        }
+        $summary = $this->summary($draft);
+        if (! $summary['reviewReady']) {
+            throw ValidationException::withMessages([
+                'application' => ['راجع كل وثيقة مطلوبة واقبلها قبل اعتماد طلب المتجر.'],
+            ]);
+        }
+    }
+
+    public function reviewEvidence(
+        Tenant $tenant,
+        StoreApplicationEvidence $evidence,
+        ApplicationEvidenceReviewStatus $status,
+        ?string $note,
+        User $actor,
+        Request $request,
+    ): void {
+        DB::connection((string) config('tenancy.database.central_connection'))
+            ->transaction(function () use ($tenant, $evidence, $status, $note, $actor, $request): void {
+                $lockedTenant = Tenant::query()->whereKey($tenant->getKey())->lockForUpdate()->firstOrFail();
+                Gate::forUser($actor)->authorize('changeAnyStatus', $lockedTenant);
+                if ($lockedTenant->getAttribute('verification_status') !== 'pending') {
+                    throw new DomainException('لا يمكن تغيير مراجعة وثائق طلب خرج من طابور المراجعة.');
+                }
+                $lockedEvidence = StoreApplicationEvidence::query()->whereKey($evidence->getKey())->lockForUpdate()->firstOrFail();
+                if ($lockedEvidence->getAttribute('tenant_id') !== $lockedTenant->getKey()) {
+                    abort(404);
+                }
+                $oldStatus = $lockedEvidence->getAttribute('review_status');
+                if ($oldStatus === $status) {
+                    return;
+                }
+                $lockedEvidence->forceFill(['review_status' => $status])->save();
+                $draft = StoreDraft::query()->whereKey($lockedEvidence->getAttribute('store_draft_id'))->lockForUpdate()->firstOrFail();
+                $this->appendEvent(
+                    $draft,
+                    $actor,
+                    'platform',
+                    $status === ApplicationEvidenceReviewStatus::Accepted ? 'document_accepted' : 'document_rejected',
+                    $status === ApplicationEvidenceReviewStatus::Accepted
+                        ? 'اعتمدت إدارة المنصة أحد مستندات الطلب.'
+                        : 'أعادت إدارة المنصة أحد مستندات الطلب للاستكمال.',
+                    ['requirementKey' => $lockedEvidence->getAttribute('requirement_key')],
+                );
+                $this->audit->record(
+                    request: $request,
+                    actor: $actor,
+                    action: 'platform.store_application.evidence_reviewed',
+                    subject: $lockedEvidence,
+                    tenant: $lockedTenant,
+                    oldValues: ['review_status' => $oldStatus->value],
+                    newValues: [
+                        'review_status' => $status->value,
+                        'note' => $note === null ? null : trim($note),
+                    ],
+                );
+            });
+    }
+
+    public function downloadForPlatform(
+        Tenant $tenant,
+        StoreApplicationEvidence $evidence,
+        User $actor,
+    ): StreamedResponse {
+        Gate::forUser($actor)->authorize('view', $tenant);
+        abort_unless($evidence->getAttribute('tenant_id') === $tenant->getKey(), 404);
+
+        return $this->downloadEvidence($evidence);
     }
 
     public function assertReady(StoreDraft $draft): void
@@ -278,6 +383,12 @@ class StoreApplicationService
     {
         $this->authorizeDraft($draft, $actor);
         abort_unless($evidence->getAttribute('store_draft_id') === $draft->getKey(), 404);
+
+        return $this->downloadEvidence($evidence);
+    }
+
+    private function downloadEvidence(StoreApplicationEvidence $evidence): StreamedResponse
+    {
         abort_unless($evidence->getAttribute('resolution') === ApplicationEvidenceResolution::Uploaded, 404);
         $disk = (string) $evidence->getAttribute('disk');
         $path = (string) $evidence->getAttribute('path');

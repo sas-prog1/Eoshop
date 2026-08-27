@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\ApplicationEvidenceReviewStatus;
 use App\Enums\TenantVerificationStatus;
 use App\Exceptions\StoreSubmissionConflict;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ActivateSubscriptionRequest;
 use App\Http\Requests\Admin\ListPlatformStoresRequest;
+use App\Http\Requests\Admin\ReviewStoreApplicationEvidenceRequest;
 use App\Http\Requests\Admin\UpdateTenantMetadataRequest;
 use App\Http\Requests\Admin\UpdateTenantStatusRequest;
+use App\Http\Resources\PlatformStoreDetailResource;
 use App\Http\Resources\PlatformStoreResource;
+use App\Models\StoreApplicationEvidence;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AdminAuditService;
@@ -18,12 +22,14 @@ use App\Services\PlatformStoreManagementService;
 use App\Services\PlatformStoreReviewService;
 use App\Services\ProvisioningCoordinator;
 use App\Services\PublicationService;
+use App\Services\StoreApplicationService;
 use App\Services\SubscriptionService;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PlatformStoreController extends Controller
 {
@@ -34,6 +40,50 @@ class PlatformStoreController extends Controller
         return PlatformStoreResource::collection(
             $administration->stores($request->validated(), self::relations())
         );
+    }
+
+    public function show(Tenant $tenant): PlatformStoreDetailResource
+    {
+        return new PlatformStoreDetailResource($tenant->load(self::detailRelations()));
+    }
+
+    public function reviewEvidence(
+        ReviewStoreApplicationEvidenceRequest $request,
+        Tenant $tenant,
+        StoreApplicationEvidence $evidence,
+        StoreApplicationService $applications,
+        AdminAuditService $audit,
+    ): PlatformStoreDetailResource|JsonResponse {
+        /** @var User $actor */
+        $actor = $request->user();
+
+        try {
+            $applications->reviewEvidence(
+                tenant: $tenant,
+                evidence: $evidence,
+                status: ApplicationEvidenceReviewStatus::from((string) $request->validated('status')),
+                note: $request->validated('note'),
+                actor: $actor,
+                request: $request,
+            );
+        } catch (DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
+        }
+
+        return (new PlatformStoreDetailResource($tenant->refresh()->load(self::detailRelations())))
+            ->additional(['meta' => ['requestId' => $audit->requestId($request)]]);
+    }
+
+    public function downloadEvidence(
+        Request $request,
+        Tenant $tenant,
+        StoreApplicationEvidence $evidence,
+        StoreApplicationService $applications,
+    ): StreamedResponse {
+        /** @var User $actor */
+        $actor = $request->user();
+
+        return $applications->downloadForPlatform($tenant, $evidence, $actor);
     }
 
     public function updateStatus(
@@ -171,5 +221,14 @@ class PlatformStoreController extends Controller
             'draft.applicationEvents',
             'draft.openCorrectionRequest',
         ];
+    }
+
+    /** @return list<string> */
+    private static function detailRelations(): array
+    {
+        return array_merge(self::relations(), [
+            'latestProvisioningRun.steps',
+            'draft.plan',
+        ]);
     }
 }

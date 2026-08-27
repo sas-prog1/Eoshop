@@ -23,6 +23,7 @@ export type {
   PlatformOverview,
   PlatformRole,
   PlatformStore,
+  PlatformStoreDetail,
   PlatformStoreQuery,
   PlatformUser,
   PlatformUserQuery,

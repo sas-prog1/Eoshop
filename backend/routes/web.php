@@ -82,6 +82,15 @@ Route::middleware('central.domain')->group(function (): void {
             ->can('viewAny', Tenant::class);
         Route::get('/stores', [PlatformStoreController::class, 'index'])
             ->can('viewAny', Tenant::class);
+        Route::get('/stores/{tenant}', [PlatformStoreController::class, 'show'])
+            ->can('view', 'tenant');
+        Route::get('/stores/{tenant}/application/evidence/{evidence}', [PlatformStoreController::class, 'downloadEvidence'])
+            ->can('view', 'tenant')
+            ->whereUuid('evidence');
+        Route::patch('/stores/{tenant}/application/evidence/{evidence}', [PlatformStoreController::class, 'reviewEvidence'])
+            ->can('changeAnyStatus', 'tenant')
+            ->whereUuid('evidence')
+            ->middleware('throttle:admin.mutations');
         Route::patch('/stores/{tenant}', [PlatformStoreController::class, 'update'])
             ->can('update', 'tenant')
             ->middleware('throttle:admin.mutations');

@@ -501,7 +501,7 @@ describe("adapter-backed interface flows", () => {
     expect(await screen.findByText("تم تحديث كلمة المرور.")).toBeTruthy();
   });
 
-  it("shows reviewer decisions but keeps manager publication actions hidden", async () => {
+  it("routes reviewers into the request dossier while keeping manager publication actions hidden", async () => {
     const reviewer = {
       ...merchant,
       role: "admin" as const,
@@ -519,13 +519,14 @@ describe("adapter-backed interface flows", () => {
       },
       attention: { review: 1, provisioning: 0, subscription: 0, publication: 1 },
     };
-    const updateStatus = vi.fn().mockResolvedValue({ ...platformStore, verificationStatus: "approved" });
+    const onOpenStore = vi.fn();
     const user = userEvent.setup();
     renderInterface(
       <PlatformAdminConsole
         user={reviewer}
         section="stores"
         onNavigate={vi.fn()}
+        onOpenStore={onOpenStore}
         onExit={vi.fn()}
         onLogout={vi.fn().mockResolvedValue(undefined)}
         onSessionExpired={vi.fn()}
@@ -534,14 +535,14 @@ describe("adapter-backed interface flows", () => {
       createFakeUiAdapters({ administration: {
         overview: vi.fn().mockResolvedValue(overview),
         listStores: vi.fn().mockResolvedValue(page),
-        updateStoreStatus: updateStatus,
       } }),
     );
 
     await screen.findByText(platformStore.storeName);
     expect(screen.queryByRole("button", { name: /نشر/ })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "قبول" }));
-    await waitFor(() => expect(updateStatus).toHaveBeenCalledWith(platformStore.id, "approved", undefined, undefined));
+    expect(screen.queryByRole("button", { name: "قبول" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "فتح ملف الطلب" }));
+    expect(onOpenStore).toHaveBeenCalledWith(platformStore.id);
   });
 
   it("calls the assistant once and renders its server-backed proposal", async () => {

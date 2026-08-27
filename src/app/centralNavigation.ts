@@ -11,7 +11,7 @@ export type CentralRoute =
   | { name: "merchant-new"; step: "business" | "design" | "review" }
   | { name: "merchant-store"; tenantId: string; section: MerchantStoreSection }
   | { name: "merchant-correction"; tenantId: string }
-  | { name: "admin"; section: AdminSection }
+  | { name: "admin"; section: AdminSection; storeId?: string }
   | { name: "unknown" };
 
 export function parseCentralRoute(pathname: string): CentralRoute {
@@ -30,6 +30,15 @@ export function parseCentralRoute(pathname: string): CentralRoute {
   if (pathname === "/admin/users" || pathname === "/admin/users/") return { name: "admin", section: "users" };
   if (pathname === "/admin/settings" || pathname === "/admin/settings/") return { name: "admin", section: "settings" };
   if (pathname === "/admin/audit" || pathname === "/admin/audit/") return { name: "admin", section: "audit" };
+
+  const adminStore = pathname.match(/^\/admin\/stores\/([^/]+)\/?$/);
+  if (adminStore) {
+    try {
+      return { name: "admin", section: "stores", storeId: decodeURIComponent(adminStore[1]) };
+    } catch {
+      return { name: "unknown" };
+    }
+  }
 
   const store = pathname.match(/^\/app\/stores\/([^/]+)(?:\/(overview|products|orders|inventory|design|checkout|pages))?\/?$/);
   if (store) {
@@ -63,6 +72,10 @@ export function merchantStorePath(tenantId: string, section: MerchantStoreSectio
 
 export function adminPath(section: AdminSection = "overview"): string {
   return section === "overview" ? "/admin" : `/admin/${section}`;
+}
+
+export function adminStorePath(storeId: string): string {
+  return `/admin/stores/${encodeURIComponent(storeId)}`;
 }
 
 export function centralPathForView(view: AppView, tenantId?: string): string {
