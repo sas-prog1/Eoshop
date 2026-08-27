@@ -4,7 +4,7 @@
 |---|---|
 | Phase | Phase 5 — Launch product completion |
 | Work Package | WP 5.26.1 |
-| Status | Implemented, locally verified and deployed to retained Pilot; protected delivery pending |
+| Status | Complete — verified, merged and deployed to retained Pilot |
 | Started | 2026-08-27 |
 | Branch | `codex/wp5-26-1a-premium-landing-hero` |
 | Base | Protected `main` at `ba511fd` |
@@ -63,9 +63,9 @@ Replace the experimental central landing presentation with a premium, truthful a
 
 ### T5 — Delivery
 
-- [ ] Create implementation commit and protected pull request.
-- [ ] Pass the four required CI checks and merge through protected `main`.
-- [ ] Record the merged commit and retained Pilot evidence.
+- [x] Create implementation commit and protected pull request.
+- [x] Pass the four required CI checks and merge through protected `main`.
+- [x] Record the merged commit and retained Pilot evidence.
 
 ## Acceptance criteria
 

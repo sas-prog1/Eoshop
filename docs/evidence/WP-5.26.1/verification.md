@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Work Package | WP 5.26.1 — Premium platform landing |
-| Status | Locally verified and deployed to retained Pilot; protected delivery pending |
+| Status | Complete — verified, merged and deployed to retained Pilot |
 | Branch | `codex/wp5-26-1a-premium-landing-hero` |
 | Base | `ba511fd` |
 
@@ -36,7 +36,8 @@
 
 ## Protected delivery
 
-- Implementation commit: pending.
-- Protected pull request: pending.
-- Required CI: pending.
-- Squash merge to protected `main`: pending.
+- Implementation commit: `78dab0469d1d792de58f1d51c372c5d8aea44eeb`.
+- Protected pull request: [PR #76](https://github.com/sas-prog1/Eoshop/pull/76).
+- Required CI: [run 33120459329](https://github.com/sas-prog1/Eoshop/actions/runs/33120459329).
+- All four required checks passed: Repository safety, Frontend quality, Backend quality and Container integration.
+- Squash merge to protected `main`: `0b8140106001efafe083ad3c642f49f34df2d50b` at `2026-08-27T22:04:06Z`.
