@@ -26,6 +26,7 @@
 - Cross-surface identity regression: 14 of 15 tests passed in the concurrent Docker run; one pre-existing application test exceeded its 5-second timing budget by 144 ms without an assertion failure.
 - Isolated rerun of that application file: PASS; 2 tests in 3.70 seconds.
 - Repository safety gate and `git diff --check`: PASS.
+- The first PR run correctly rejected a direct service-layer type import from the extracted preview component. The import now crosses the adapter boundary, and the focused architecture plus editor regression passes 8 tests.
 
 ## Retained Pilot
 

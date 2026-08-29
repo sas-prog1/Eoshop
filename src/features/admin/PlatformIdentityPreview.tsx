@@ -1,7 +1,7 @@
 import { LockKeyhole, Store } from "lucide-react";
 
+import type { PlatformSettings } from "../../adapters/uiAdapters";
 import defaultIdentityImage from "../../assets/images/hero_banner_perfume_1785918166890.jpg";
-import type { PlatformSettings } from "../../services/platformSettingsApi";
 import { isSafePlatformLogoUrl } from "../../utils/platformLogoUrl";
 import { readableForeground } from "../../utils/readableForeground";
 
