@@ -4,7 +4,7 @@
 |---|---|
 | Phase | Phase 5 — Launch product completion |
 | Work Package | WP 5.26.2B |
-| Status | In progress |
+| Status | Complete and merged |
 | Started | 2026-08-29 |
 | Branch | `codex/wp5-26-2b-platform-identity-editor` |
 | Base | Protected `main` at `96de04c` |
@@ -53,7 +53,7 @@ Let an authorized platform administrator edit the already server-owned premium i
 - [x] Prove unsafe images and malformed colours cannot be saved or rendered.
 - [x] Pass focused frontend regression and the locked production build.
 - [x] Pass the local repository gate on the final implementation tree.
-- [ ] Pass the four GitHub required checks on the final tree.
+- [x] Pass the four GitHub required checks on the final tree.
 
 ### T4 — Pilot
 
@@ -61,8 +61,8 @@ Let an authorized platform administrator edit the already server-owned premium i
 
 ### T5 — Delivery
 
-- [ ] Record implementation commit, PR, four required CI checks and protected merge.
-- [ ] Record Pilot and rollback evidence.
+- [x] Record implementation commit, PR, four required CI checks and protected merge.
+- [x] Record Pilot and rollback evidence.
 
 ## Rollback
 

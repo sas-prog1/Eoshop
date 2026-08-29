@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Work Package | WP 5.26.2B — Platform identity editor and dual preview |
-| Status | Implementation and retained Pilot verified; GitHub delivery pending |
+| Status | Complete and merged |
 | Verified | 2026-08-29 |
 | Branch | `codex/wp5-26-2b-platform-identity-editor` |
 | Base | Protected `main` at `96de04ce54eafefbb2b9847d3a981bc7974eebc2` |
@@ -38,7 +38,12 @@
 
 ## Delivery record
 
-- Implementation commit: pending.
-- Pull request: pending.
-- Required CI checks: pending.
-- Protected merge: pending.
+- Implementation commits: `aef2c9c4abd3a6493be98fbcd2c2bb73f86519b0` and boundary correction `4f5ea89736dbb00a79288812e96d8741abd43ed1`.
+- Pull request: [#80 — WP 5.26.2B platform identity editor](https://github.com/sas-prog1/Eoshop/pull/80).
+- Final required CI run: [33264898412](https://github.com/sas-prog1/Eoshop/actions/runs/33264898412).
+  - Repository safety: PASS in 24 seconds.
+  - Backend quality: PASS in 48 seconds.
+  - Frontend quality: PASS in 1 minute 29 seconds.
+  - Container integration: PASS in 4 minutes 57 seconds, including clean migrations and HTTP smoke tests.
+- Protected squash merge: `52272223cc7c05c535ec39a1b0af137a18c8008d` on 2026-08-29 at 17:17:19 UTC.
+- Remote protected `main` was verified at the same merge commit after delivery.
