@@ -2,7 +2,7 @@
 
 ## Result
 
-The shared platform identity contract, premium authentication shell and retained Pilot rollout are verified. Delivery remains intentionally open until the protected pull request passes all four required CI checks and is merged.
+The shared platform identity contract, premium authentication shell and retained Pilot rollout are verified, protected by all four required CI checks and merged into `main`.
 
 ## Backend and database
 
@@ -58,4 +58,13 @@ The previous backend and web image tags remain the runtime rollback boundary. Th
 
 ## Delivery record
 
-Implementation commit, pull request, four CI results and protected merge SHA will be added only after those events exist.
+- Implementation commit: `0bc2587ef7138a12c927b16f2f7e4f4a741a8627`.
+- Pull request: [#78](https://github.com/sas-prog1/Eoshop/pull/78).
+- CI run: [33252397039](https://github.com/sas-prog1/Eoshop/actions/runs/33252397039).
+- Required checks:
+  - Repository safety: passed in 10 seconds.
+  - Backend quality: passed in 56 seconds.
+  - Frontend quality: passed in 1 minute 12 seconds.
+  - Container integration: passed in 5 minutes 29 seconds.
+- Protected squash merge: `aedc6e4d9165ffe7a3e7bc6aef35c3f371976509` on 2026-08-29.
+- Remote `main` was verified at the same merge SHA after completion.

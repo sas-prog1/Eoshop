@@ -4,8 +4,9 @@
 |---|---|
 | Phase | Phase 5 — Launch product completion |
 | Work Package | WP 5.26.2A |
-| Status | Implementation and pilot verified; delivery pending |
+| Status | Closed |
 | Started | 2026-08-28 |
+| Completed | 2026-08-29 |
 | Branch | `codex/wp5-26-2a-platform-identity-contract` |
 | Base | Protected `main` at `11ca8a6` |
 | Dependencies | WP 5.12, WP 5.13 and WP 5.26.1 |
@@ -60,8 +61,8 @@ Make the premium public platform and all routed authentication screens consume o
 
 ### T5 — Delivery
 
-- [ ] Record implementation commit, PR, four required CI checks and protected merge.
-- [ ] Record retained Pilot image and HTTP evidence.
+- [x] Record implementation commit, PR, four required CI checks and protected merge.
+- [x] Record retained Pilot image and HTTP evidence.
 
 ## Rollback
 
