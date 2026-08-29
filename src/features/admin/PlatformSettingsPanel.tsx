@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowDown, ArrowUp, Eye, RefreshCw, RotateCcw, Save, Settings2 } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Eye, Image, Palette, RefreshCw, RotateCcw, Save, Type } from "lucide-react";
 import {
   isUiError,
   isUiErrorCode,
@@ -10,6 +10,7 @@ import {
   type UiAdapters,
 } from "../../adapters/uiAdapters";
 import { isSafePlatformLogoUrl } from "../../utils/platformLogoUrl";
+import PlatformIdentityPreview, { type PlatformIdentityPreviewMode } from "./PlatformIdentityPreview";
 
 interface PlatformSettingsPanelProps {
   administration: UiAdapters["administration"];
@@ -23,6 +24,18 @@ interface PlatformSettingsPanelProps {
 }
 
 const input = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-100";
+const colorPattern = /^#[0-9A-F]{6}$/;
+const brandFonts: PlatformSettings["brandFontFamily"][] = ["Tajawal", "Cairo", "IBM Plex Sans Arabic"];
+
+function visualIdentityError(settings: PlatformSettings): string | null {
+  if (![settings.brandPrimaryColor, settings.brandAccentColor, settings.brandSurfaceColor].every((color) => colorPattern.test(color))) {
+    return "ألوان الهوية يجب أن تكون بصيغة #RRGGBB.";
+  }
+  if (!isSafePlatformLogoUrl(settings.landingHeroImageUrl) || !isSafePlatformLogoUrl(settings.authImageUrl)) {
+    return "صور الهوية تقبل روابط HTTPS خارجية وآمنة فقط.";
+  }
+  return null;
+}
 
 function editable(settings: AdminPlatformSettings): PlatformSettings {
   const { updatedAt: _updatedAt, updatedByUserId: _updatedByUserId, ...value } = settings;
@@ -52,6 +65,7 @@ export default function PlatformSettingsPanel({
   const [saving, setSaving] = useState(false);
   const [forbidden, setForbidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState<PlatformIdentityPreviewMode>("landing");
   const dirty = useMemo(() => server !== null && draft !== null && !same(editable(server), draft), [draft, server]);
   const protectedDirty = dirty || conflictDraft !== null;
 
@@ -158,6 +172,11 @@ export default function PlatformSettingsPanel({
 
   const save = async () => {
     if (!server || !draft || saving || loading || forbidden || !dirty) return;
+    const identityError = visualIdentityError(draft);
+    if (identityError) {
+      setError(identityError);
+      return;
+    }
     const current = ++sequence.current;
     setSaving(true);
     onLoadingChange(true);
@@ -207,6 +226,9 @@ export default function PlatformSettingsPanel({
   const disabled = loading || saving;
   const editorDisabled = disabled || conflictDraft !== null;
   const safeLogoUrl = isSafePlatformLogoUrl(draft.logoUrl) ? draft.logoUrl : null;
+  const identityError = visualIdentityError(draft);
+  const landingImageInvalid = draft.landingHeroImageUrl !== null && !isSafePlatformLogoUrl(draft.landingHeroImageUrl);
+  const authImageInvalid = draft.authImageUrl !== null && !isSafePlatformLogoUrl(draft.authImageUrl);
 
   return (
     <section className="mx-auto max-w-7xl space-y-5">
@@ -226,6 +248,24 @@ export default function PlatformSettingsPanel({
             <label className="block text-xs font-bold">رابط شعار HTTPS خارجي<input dir="ltr" className={`${input} mt-2`} value={draft.logoUrl ?? ""} maxLength={2048} onChange={(event) => change("logoUrl", event.target.value || null)} placeholder="https://cdn.example.com/logo.png" /></label>
             {draft.logoUrl && !safeLogoUrl && <p className="text-xs font-bold text-rose-700">لن تُعرض معاينة الشعار حتى يكون الرابط HTTPS خارجيًا وآمنًا.</p>}
             <label className="flex items-center gap-3 text-xs font-bold">اللون الأساسي<input type="color" value={draft.primaryColor} onChange={(event) => change("primaryColor", event.target.value.toUpperCase())} className="h-10 w-16 rounded-lg border border-slate-200 bg-white p-1" /><code dir="ltr">{draft.primaryColor}</code></label>
+          </fieldset>
+
+          <fieldset disabled={editorDisabled} className="space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <legend className="flex items-center gap-2 px-2 text-sm font-black"><Palette className="h-4 w-4" /> الهوية البصرية للمنصة</legend>
+            <p className="text-xs leading-6 text-slate-500">هذه القيم تطبق على الصفحة الرئيسية ونوافذ الدخول والتسجيل فقط، ولا تغير هوية متاجر المستأجرين.</p>
+            <div className="grid gap-4 md:grid-cols-3">
+              <VisualColorField label="اللون الرئيسي" value={draft.brandPrimaryColor} onChange={(value) => change("brandPrimaryColor", value)} />
+              <VisualColorField label="اللون المساند" value={draft.brandAccentColor} onChange={(value) => change("brandAccentColor", value)} />
+              <VisualColorField label="لون الخلفية" value={draft.brandSurfaceColor} onChange={(value) => change("brandSurfaceColor", value)} />
+            </div>
+            <label className="block text-xs font-bold"><span className="flex items-center gap-2"><Type className="h-4 w-4" /> خط المنصة</span><select aria-label="خط المنصة" className={`${input} mt-2`} value={draft.brandFontFamily} onChange={(event) => change("brandFontFamily", event.target.value as PlatformSettings["brandFontFamily"])}>{brandFonts.map((font) => <option key={font} value={font}>{font}</option>)}</select></label>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <label className="block text-xs font-bold"><span className="flex items-center gap-2"><Image className="h-4 w-4" /> صورة الصفحة الرئيسية</span><input aria-label="رابط صورة الصفحة الرئيسية" dir="ltr" className={`${input} mt-2`} value={draft.landingHeroImageUrl ?? ""} maxLength={2048} onChange={(event) => change("landingHeroImageUrl", event.target.value || null)} placeholder="https://cdn.example.com/landing.jpg" /></label>
+              <label className="block text-xs font-bold"><span className="flex items-center gap-2"><Image className="h-4 w-4" /> صورة نافذة الدخول</span><input aria-label="رابط صورة نافذة الدخول" dir="ltr" className={`${input} mt-2`} value={draft.authImageUrl ?? ""} maxLength={2048} onChange={(event) => change("authImageUrl", event.target.value || null)} placeholder="اختياري — ترث صورة الرئيسية" /></label>
+            </div>
+            {landingImageInvalid && <p className="text-xs font-bold text-rose-700">رابط صورة الصفحة الرئيسية غير آمن؛ استخدم HTTPS خارجيًا دون بيانات دخول أو fragment.</p>}
+            {authImageInvalid && <p className="text-xs font-bold text-rose-700">رابط صورة نافذة الدخول غير آمن؛ اتركه فارغًا لوراثة صورة الرئيسية.</p>}
+            {!landingImageInvalid && !authImageInvalid && <p className="text-[11px] leading-5 text-slate-500">ترك صورة الدخول فارغة يجعلها تستخدم صورة الرئيسية، وترك الصورتين فارغتين يبقي الصورة الافتراضية المعتمدة.</p>}
           </fieldset>
 
           <fieldset disabled={editorDisabled} className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -255,16 +295,19 @@ export default function PlatformSettingsPanel({
 
         <aside className="h-fit space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-4">
           <p className="flex items-center gap-2 text-sm font-black"><Eye className="h-4 w-4" /> معاينة الهوية</p>
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-            {draft.announcementEnabled && draft.announcementText && <p style={{ backgroundColor: draft.primaryColor }} className="px-4 py-2 text-center text-xs font-bold text-white">{draft.announcementText}</p>}
-            <div className="p-5"><div className="flex items-center gap-3">{safeLogoUrl ? <img src={safeLogoUrl} referrerPolicy="no-referrer" alt="" className="h-11 w-11 rounded-xl object-contain" /> : <span style={{ backgroundColor: draft.primaryColor }} className="grid h-11 w-11 place-items-center rounded-xl text-white"><Settings2 className="h-5 w-5" /></span>}<div><strong>{draft.platformName}</strong><p className="text-[11px] text-slate-500">{draft.tagline}</p></div></div><h3 className="mt-6 text-xl font-black">{draft.landingHeadline}</h3><p className="mt-2 text-xs leading-6 text-slate-600">{draft.landingDescription}</p><nav className="mt-5 flex flex-wrap gap-2">{orderedNavigation.filter((item) => item.isVisible).map((item) => <span key={item.key} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold">{item.label}</span>)}</nav></div>
-          </div>
-          <p className="text-[11px] leading-5 text-slate-500">المعاينة تقريبية. لا تقبل اللوحة HTML أو CSS أو روابط تنقل حرة.</p>
+          <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1" role="group" aria-label="نوع معاينة الهوية"><button type="button" aria-pressed={previewMode === "landing"} onClick={() => setPreviewMode("landing")} className={`min-h-10 rounded-lg px-3 text-xs font-black ${previewMode === "landing" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500"}`}>الصفحة الرئيسية</button><button type="button" aria-pressed={previewMode === "auth"} onClick={() => setPreviewMode("auth")} className={`min-h-10 rounded-lg px-3 text-xs font-black ${previewMode === "auth" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500"}`}>تسجيل الدخول</button></div>
+          <PlatformIdentityPreview settings={{ ...draft, logoUrl: safeLogoUrl }} mode={previewMode} />
+          <p className="text-[11px] leading-5 text-slate-500">معاينة مباشرة قبل الحفظ. لا تقبل اللوحة HTML أو CSS أو خطوطًا وروابط حرة.</p>
           <p className="text-[11px] text-slate-400">Revision {server.revision} · {server.updatedAt ? new Date(server.updatedAt).toLocaleString("ar-YE") : "الإعدادات الافتراضية"}</p>
         </aside>
       </div>
 
-      <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur"><p className={`text-xs font-bold ${protectedDirty ? "text-amber-700" : "text-emerald-700"}`}>{conflictDraft ? "مسودة تعارض محفوظة وتحتاج قرارًا قبل المغادرة." : dirty ? "لديك تعديلات غير محفوظة." : "الإعدادات مطابقة لنسخة الخادم."}</p><div className="flex gap-2"><button type="button" disabled={disabled || !protectedDirty} onClick={() => { setDraft(editable(server)); setConflictDraft(null); setError(null); }} className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold disabled:opacity-40"><RotateCcw className="h-4 w-4" /> تجاهل</button><button type="button" disabled={disabled || !dirty} onClick={() => void save()} style={{ backgroundColor: draft.primaryColor }} className="flex items-center gap-2 rounded-xl px-5 py-2 text-xs font-black text-white disabled:opacity-40"><Save className="h-4 w-4" /> {saving ? "جارٍ الحفظ..." : "حفظ الإعدادات"}</button><button type="button" disabled={disabled || protectedDirty} onClick={() => void load(true)} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> تحديث</button></div></div>
+      <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur"><p className={`text-xs font-bold ${identityError ? "text-rose-700" : protectedDirty ? "text-amber-700" : "text-emerald-700"}`}>{identityError ?? (conflictDraft ? "مسودة تعارض محفوظة وتحتاج قرارًا قبل المغادرة." : dirty ? "لديك تعديلات غير محفوظة." : "الإعدادات مطابقة لنسخة الخادم.")}</p><div className="flex gap-2"><button type="button" disabled={disabled || !protectedDirty} onClick={() => { setDraft(editable(server)); setConflictDraft(null); setError(null); }} className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold disabled:opacity-40"><RotateCcw className="h-4 w-4" /> تجاهل</button><button type="button" disabled={disabled || !dirty || identityError !== null} onClick={() => void save()} style={{ backgroundColor: draft.primaryColor }} className="flex items-center gap-2 rounded-xl px-5 py-2 text-xs font-black text-white disabled:opacity-40"><Save className="h-4 w-4" /> {saving ? "جارٍ الحفظ..." : "حفظ الإعدادات"}</button><button type="button" disabled={disabled || protectedDirty} onClick={() => void load(true)} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold disabled:opacity-40"><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> تحديث</button></div></div>
     </section>
   );
+}
+
+function VisualColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  const valid = colorPattern.test(value);
+  return <label className="block text-xs font-bold">{label}<span className="mt-2 flex items-center gap-2"><input aria-label={`${label} — منتقي اللون`} type="color" value={valid ? value : "#000000"} onChange={(event) => onChange(event.target.value.toUpperCase())} className="h-11 w-14 shrink-0 rounded-lg border border-slate-200 bg-white p-1" /><input aria-label={`${label} — رمز اللون`} dir="ltr" value={value} maxLength={7} onChange={(event) => onChange(event.target.value.trim().toUpperCase())} className={`${input} font-mono ${valid ? "" : "border-rose-300 bg-rose-50"}`} /></span>{!valid && <span className="mt-1 block text-[10px] text-rose-700">استخدم مثالًا مثل #081725</span>}</label>;
 }
