@@ -11,6 +11,7 @@ import {
 import { isSafePlatformLogoUrl } from "../utils/platformLogoUrl";
 
 export type PlatformNavigationKey = "templates" | "how_it_works" | "pricing";
+export type PlatformBrandFont = "Cairo" | "Tajawal" | "IBM Plex Sans Arabic";
 
 export interface PlatformNavigationItem {
   key: PlatformNavigationKey;
@@ -25,6 +26,12 @@ export interface PlatformSettings {
   tagline: string | null;
   logoUrl: string | null;
   primaryColor: string;
+  brandPrimaryColor: string;
+  brandAccentColor: string;
+  brandSurfaceColor: string;
+  brandFontFamily: PlatformBrandFont;
+  landingHeroImageUrl: string | null;
+  authImageUrl: string | null;
   landingHeadline: string;
   landingDescription: string;
   announcementEnabled: boolean;
@@ -54,6 +61,12 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   tagline: "منصة المتاجر الرقمية",
   logoUrl: null,
   primaryColor: "#0284C7",
+  brandPrimaryColor: "#081725",
+  brandAccentColor: "#B18A46",
+  brandSurfaceColor: "#F8F6F1",
+  brandFontFamily: "Tajawal",
+  landingHeroImageUrl: null,
+  authImageUrl: null,
   landingHeadline: "أنشئ متجرك الإلكتروني بذكاء وسرعة",
   landingDescription: "صمم هوية متجرك واختر قالبًا قابلًا للتخصيص، ثم أرسل طلبك للمراجعة والتجهيز قبل النشر.",
   announcementEnabled: false,
@@ -77,6 +90,11 @@ export function mapPlatformSettings(value: unknown): PlatformSettings {
   const logoUrl = nullableStringField(dto, "logoUrl", "إعدادات المنصة العامة");
   if (!isSafePlatformLogoUrl(logoUrl)) {
     throw new Error("استجابة الخادم تحتوي رابط شعار غير آمن.");
+  }
+  const landingHeroImageUrl = nullableStringField(dto, "landingHeroImageUrl", "إعدادات المنصة العامة");
+  const authImageUrl = nullableStringField(dto, "authImageUrl", "إعدادات المنصة العامة");
+  if (!isSafePlatformLogoUrl(landingHeroImageUrl) || !isSafePlatformLogoUrl(authImageUrl)) {
+    throw new Error("استجابة الخادم تحتوي رابط صورة هوية غير آمن.");
   }
   const navigationItems = arrayField(dto, "navigationItems", "إعدادات المنصة العامة")
     .map((item) => {
@@ -103,6 +121,12 @@ export function mapPlatformSettings(value: unknown): PlatformSettings {
     tagline: nullableStringField(dto, "tagline", "إعدادات المنصة العامة"),
     logoUrl,
     primaryColor: stringField(dto, "primaryColor", "إعدادات المنصة العامة"),
+    brandPrimaryColor: stringField(dto, "brandPrimaryColor", "إعدادات المنصة العامة"),
+    brandAccentColor: stringField(dto, "brandAccentColor", "إعدادات المنصة العامة"),
+    brandSurfaceColor: stringField(dto, "brandSurfaceColor", "إعدادات المنصة العامة"),
+    brandFontFamily: enumField(dto, "brandFontFamily", ["Cairo", "Tajawal", "IBM Plex Sans Arabic"] as const, "إعدادات المنصة العامة"),
+    landingHeroImageUrl,
+    authImageUrl,
     landingHeadline: stringField(dto, "landingHeadline", "إعدادات المنصة العامة"),
     landingDescription: stringField(dto, "landingDescription", "إعدادات المنصة العامة"),
     announcementEnabled: booleanField(dto, "announcementEnabled", "إعدادات المنصة العامة"),

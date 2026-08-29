@@ -40,7 +40,7 @@ export type { CatalogSnapshot } from "../services/catalogApi";
 export type { StoreAssetUpload } from "../services/storeAssetApi";
 export type { CreateOrderInput, MerchantOrderList, MerchantOrderQuery, MerchantOrderStatus, OrderDetail, OrderReceipt, StorefrontBootstrap } from "../services/orderApi";
 export type { MerchantDashboardSnapshot, MerchantDashboardTaskCode } from "../services/merchantDashboardApi";
-export type { AdminPlatformSettings, PlatformNavigationItem, PlatformNavigationKey, PlatformSettings, UpdatePlatformSettingsInput } from "../services/platformSettingsApi";
+export type { AdminPlatformSettings, PlatformBrandFont, PlatformNavigationItem, PlatformNavigationKey, PlatformSettings, UpdatePlatformSettingsInput } from "../services/platformSettingsApi";
 export {
   UiAdapterError,
   isUiError,

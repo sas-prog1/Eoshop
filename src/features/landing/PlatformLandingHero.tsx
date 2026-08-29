@@ -16,6 +16,10 @@ interface LandingSettingsProjection {
   platformName: string;
   tagline: string | null;
   logoUrl: string | null;
+  brandPrimaryColor: string;
+  brandAccentColor: string;
+  brandSurfaceColor: string;
+  landingHeroImageUrl: string | null;
   landingHeadline: string;
   landingDescription: string;
   announcementEnabled: boolean;
@@ -58,18 +62,18 @@ export default function PlatformLandingHero({
   return (
     <>
       {settings.announcementEnabled && settings.announcementText && (
-        <div className="bg-[#091827] px-6 py-2.5 text-center text-xs font-bold tracking-wide text-[#f4efe5]">
+        <div className="px-6 py-2.5 text-center text-xs font-bold tracking-wide" style={{ backgroundColor: settings.brandPrimaryColor, color: "var(--platform-brand-primary-foreground)" }}>
           {settings.announcementText}
         </div>
       )}
 
-      <header className="relative z-30 border-b border-[#ded8cc] bg-[#f8f6f1]/95 text-slate-950 backdrop-blur-xl">
+      <header className="relative z-30 border-b border-[#ded8cc] text-slate-950 backdrop-blur-xl" style={{ backgroundColor: settings.brandSurfaceColor }}>
         <div className="mx-auto flex min-h-20 max-w-[1440px] items-center justify-between gap-5 px-5 sm:px-8 lg:px-12">
           <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex min-h-11 items-center gap-3 text-right" aria-label={`العودة إلى بداية منصة ${settings.platformName}`}>
             {settings.logoUrl ? (
               <img src={settings.logoUrl} alt={`شعار ${settings.platformName}`} className="h-11 w-11 border border-[#d8d1c4] bg-white object-contain p-1" referrerPolicy="no-referrer" />
             ) : (
-              <span className="grid h-11 w-11 place-items-center bg-[#091827] text-[#d5bd87]"><Store className="h-5 w-5" aria-hidden="true" /></span>
+              <span className="grid h-11 w-11 place-items-center" style={{ backgroundColor: settings.brandPrimaryColor, color: settings.brandAccentColor }}><Store className="h-5 w-5" aria-hidden="true" /></span>
             )}
             <span>
               <span className="block font-display text-xl font-black tracking-tight">{settings.platformName}</span>
@@ -91,7 +95,7 @@ export default function PlatformLandingHero({
                 <button type="button" onClick={onOpenPortal} className="min-h-11 border border-[#cfc7b8] bg-transparent px-5 text-sm font-bold text-slate-800 transition hover:bg-white">
                   بوابة {firstName}
                 </button>
-                <button type="button" onClick={onCreateStore} className="min-h-11 bg-[#091827] px-5 text-sm font-bold text-white transition hover:bg-[#142b40]">
+                <button type="button" onClick={onCreateStore} style={{ backgroundColor: settings.brandPrimaryColor, color: "var(--platform-brand-primary-foreground)" }} className="min-h-11 px-5 text-sm font-bold transition hover:brightness-110">
                   متجر جديد
                 </button>
               </>
@@ -100,7 +104,7 @@ export default function PlatformLandingHero({
                 <button type="button" onClick={onLogin} className="min-h-11 border border-[#cfc7b8] bg-transparent px-5 text-sm font-bold text-slate-800 transition hover:bg-white">
                   تسجيل الدخول
                 </button>
-                <button type="button" onClick={onRegister} className="min-h-11 bg-[#091827] px-5 text-sm font-bold text-white transition hover:bg-[#142b40]">
+                <button type="button" onClick={onRegister} style={{ backgroundColor: settings.brandPrimaryColor, color: "var(--platform-brand-primary-foreground)" }} className="min-h-11 px-5 text-sm font-bold transition hover:brightness-110">
                   أنشئ متجرك
                 </button>
               </>
@@ -120,7 +124,7 @@ export default function PlatformLandingHero({
         </div>
 
         {mobileMenuOpen && (
-          <div id="platform-mobile-navigation" className="border-t border-[#ded8cc] bg-[#f8f6f1] px-5 py-5 lg:hidden">
+          <div id="platform-mobile-navigation" className="border-t border-[#ded8cc] px-5 py-5 lg:hidden" style={{ backgroundColor: settings.brandSurfaceColor }}>
             <nav aria-label="التنقل الرئيسي للجوال" className="grid gap-1">
               {navigation.map((item) => (
                 <button key={item.key} type="button" onClick={() => selectNavigation(item.key)} className="min-h-11 border-b border-[#e6e0d6] px-2 text-right text-sm font-bold text-slate-800">
@@ -132,12 +136,12 @@ export default function PlatformLandingHero({
               {user ? (
                 <>
                   <button type="button" onClick={onOpenPortal} className="min-h-11 border border-[#cfc7b8] bg-white px-3 text-sm font-bold">بوابة التاجر</button>
-                  <button type="button" onClick={onCreateStore} className="min-h-11 bg-[#091827] px-3 text-sm font-bold text-white">متجر جديد</button>
+                  <button type="button" onClick={onCreateStore} style={{ backgroundColor: settings.brandPrimaryColor, color: "var(--platform-brand-primary-foreground)" }} className="min-h-11 px-3 text-sm font-bold">متجر جديد</button>
                 </>
               ) : (
                 <>
                   <button type="button" onClick={onLogin} className="min-h-11 border border-[#cfc7b8] bg-white px-3 text-sm font-bold">تسجيل الدخول</button>
-                  <button type="button" onClick={onRegister} className="min-h-11 bg-[#091827] px-3 text-sm font-bold text-white">أنشئ متجرك</button>
+                  <button type="button" onClick={onRegister} style={{ backgroundColor: settings.brandPrimaryColor, color: "var(--platform-brand-primary-foreground)" }} className="min-h-11 px-3 text-sm font-bold">أنشئ متجرك</button>
                 </>
               )}
             </div>
@@ -147,19 +151,19 @@ export default function PlatformLandingHero({
 
       <main className="relative isolate flex min-h-[720px] items-stretch overflow-hidden bg-[#d9d2c7] lg:min-h-[760px]" aria-labelledby="platform-hero-title">
         <img
-          src={heroImage}
+          src={settings.landingHeroImageUrl ?? heroImage}
           alt="واجهة متجر عربي فاخر تعرض منتجات محلية"
           className="absolute inset-0 h-full w-full object-cover object-center"
           fetchPriority="high"
           decoding="async"
         />
-        <div className="absolute inset-0 bg-gradient-to-l from-[#081725]/40 via-[#081725]/10 to-[#081725]/25" aria-hidden="true" />
+        <div className="absolute inset-0" style={{ background: `linear-gradient(to left, ${settings.brandPrimaryColor}66, ${settings.brandPrimaryColor}1A, ${settings.brandPrimaryColor}40)` }} aria-hidden="true" />
         <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#071522]/45 to-transparent" aria-hidden="true" />
 
         <div className="relative z-10 mx-auto flex w-full max-w-[1440px] items-center px-5 py-12 sm:px-8 lg:px-12 lg:py-16">
-          <section className="w-full border-r-4 border-[#b79a61] bg-[#f5f1e8]/94 px-7 py-10 text-right shadow-[0_30px_80px_rgba(5,18,31,0.24)] backdrop-blur-md sm:max-w-[660px] sm:px-12 sm:py-14 lg:px-16 lg:py-16">
-            <p className="text-xs font-bold tracking-[0.12em] text-[#806a42]">منصة متاجر إلكترونية لأصحاب الأعمال</p>
-            <h1 id="platform-hero-title" className="mt-5 font-display text-4xl font-black leading-[1.2] tracking-tight text-[#081725] sm:text-5xl lg:text-6xl">
+          <section className="w-full border-r-4 px-7 py-10 text-right shadow-[0_30px_80px_rgba(5,18,31,0.24)] backdrop-blur-md sm:max-w-[660px] sm:px-12 sm:py-14 lg:px-16 lg:py-16" style={{ borderRightColor: settings.brandAccentColor, backgroundColor: `${settings.brandSurfaceColor}F0` }}>
+            <p className="text-xs font-bold tracking-[0.12em]" style={{ color: settings.brandAccentColor }}>منصة متاجر إلكترونية لأصحاب الأعمال</p>
+            <h1 id="platform-hero-title" className="mt-5 font-display text-4xl font-black leading-[1.2] tracking-tight sm:text-5xl lg:text-6xl" style={{ color: settings.brandPrimaryColor }}>
               {settings.landingHeadline}
             </h1>
             <p className="mt-6 max-w-xl text-base font-medium leading-8 text-slate-700 sm:text-lg">
@@ -170,7 +174,8 @@ export default function PlatformLandingHero({
               <button
                 type="button"
                 onClick={user ? onOpenPortal : onRegister}
-                className="group inline-flex min-h-13 items-center justify-center gap-3 bg-[#081725] px-7 text-sm font-black text-white transition hover:bg-[#142c40] sm:text-base"
+                style={{ backgroundColor: settings.brandPrimaryColor, color: "var(--platform-brand-primary-foreground)" }}
+                className="group inline-flex min-h-13 items-center justify-center gap-3 px-7 text-sm font-black transition hover:brightness-110 sm:text-base"
               >
                 <span>{user ? "الانتقال إلى بوابة التاجر" : "ابدأ إنشاء متجرك"}</span>
                 <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" aria-hidden="true" />
@@ -178,7 +183,8 @@ export default function PlatformLandingHero({
               <button
                 type="button"
                 onClick={onExplainJourney}
-                className="inline-flex min-h-13 items-center justify-center border border-[#9d927e] bg-white/35 px-7 text-sm font-black text-[#081725] transition hover:bg-white/70 sm:text-base"
+                style={{ color: settings.brandPrimaryColor, borderColor: `${settings.brandPrimaryColor}73` }}
+                className="inline-flex min-h-13 items-center justify-center border bg-white/35 px-7 text-sm font-black transition hover:bg-white/70 sm:text-base"
               >
                 اكتشف كيف تعمل المنصة
               </button>

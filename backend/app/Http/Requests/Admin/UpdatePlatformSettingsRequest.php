@@ -12,6 +12,8 @@ class UpdatePlatformSettingsRequest extends FormRequest
 {
     private const FIELDS = [
         'expectedRevision', 'platformName', 'tagline', 'logoUrl', 'primaryColor',
+        'brandPrimaryColor', 'brandAccentColor', 'brandSurfaceColor', 'brandFontFamily',
+        'landingHeroImageUrl', 'authImageUrl',
         'landingHeadline', 'landingDescription', 'announcementEnabled', 'announcementText',
         'supportEmail', 'supportPhone', 'supportWhatsapp', 'showHowItWorks', 'showPricing',
         'storefrontAttributionEnabled', 'storefrontAttributionText', 'navigationItems',
@@ -25,15 +27,17 @@ class UpdatePlatformSettingsRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $values = [];
-        foreach (['platformName', 'tagline', 'logoUrl', 'landingHeadline', 'landingDescription', 'announcementText', 'supportEmail', 'supportPhone', 'supportWhatsapp', 'storefrontAttributionText'] as $field) {
+        foreach (['platformName', 'tagline', 'logoUrl', 'brandFontFamily', 'landingHeroImageUrl', 'authImageUrl', 'landingHeadline', 'landingDescription', 'announcementText', 'supportEmail', 'supportPhone', 'supportWhatsapp', 'storefrontAttributionText'] as $field) {
             $value = $this->input($field);
             if (is_string($value)) {
                 $value = trim($value);
                 $values[$field] = $value === '' && ! in_array($field, ['platformName', 'landingHeadline', 'landingDescription'], true) ? null : $value;
             }
         }
-        if (is_string($this->input('primaryColor'))) {
-            $values['primaryColor'] = mb_strtoupper(trim((string) $this->input('primaryColor')));
+        foreach (['primaryColor', 'brandPrimaryColor', 'brandAccentColor', 'brandSurfaceColor'] as $field) {
+            if (is_string($this->input($field))) {
+                $values[$field] = mb_strtoupper(trim((string) $this->input($field)));
+            }
         }
         if (is_string($values['supportEmail'] ?? null)) {
             $values['supportEmail'] = mb_strtolower($values['supportEmail']);
@@ -60,6 +64,12 @@ class UpdatePlatformSettingsRequest extends FormRequest
             'tagline' => ['nullable', 'string', 'min:2', 'max:160'],
             'logoUrl' => ['nullable', 'string', 'max:2048'],
             'primaryColor' => ['required', 'string', 'regex:/^#[0-9A-F]{6}$/'],
+            'brandPrimaryColor' => ['required', 'string', 'regex:/^#[0-9A-F]{6}$/'],
+            'brandAccentColor' => ['required', 'string', 'regex:/^#[0-9A-F]{6}$/'],
+            'brandSurfaceColor' => ['required', 'string', 'regex:/^#[0-9A-F]{6}$/'],
+            'brandFontFamily' => ['required', 'string', Rule::in(['Cairo', 'Tajawal', 'IBM Plex Sans Arabic'])],
+            'landingHeroImageUrl' => ['nullable', 'string', 'max:2048'],
+            'authImageUrl' => ['nullable', 'string', 'max:2048'],
             'landingHeadline' => ['required', 'string', 'min:10', 'max:160'],
             'landingDescription' => ['required', 'string', 'min:20', 'max:500'],
             'announcementEnabled' => ['required', 'boolean'],
@@ -91,9 +101,11 @@ class UpdatePlatformSettingsRequest extends FormRequest
                     $validator->errors()->add("navigationItems.{$index}", 'The navigation item contains unsupported fields.');
                 }
             }
-            $logoUrl = $this->input('logoUrl');
-            if (($logoUrl === null || is_string($logoUrl)) && ! PlatformLogoUrl::accepts($logoUrl)) {
-                $validator->errors()->add('logoUrl', 'The platform logo URL must be a safe external HTTPS URL.');
+            foreach (['logoUrl', 'landingHeroImageUrl', 'authImageUrl'] as $field) {
+                $url = $this->input($field);
+                if (($url === null || is_string($url)) && ! PlatformLogoUrl::accepts($url)) {
+                    $validator->errors()->add($field, 'The platform image URL must be a safe external HTTPS URL.');
+                }
             }
             $items = collect((array) $this->input('navigationItems', []))->keyBy('key');
             if ($this->boolean('showHowItWorks') === false && data_get($items->get('how_it_works'), 'isVisible') === true) {

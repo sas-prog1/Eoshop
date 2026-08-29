@@ -1477,7 +1477,7 @@ export default function App() {
 
       {/* ----------------- 1. LANDING PAGE VIEW ----------------- */}
       {view === "landing" && (
-        <div className="relative flex flex-1 flex-col overflow-hidden bg-[#f8f6f1]">
+        <div className="relative flex flex-1 flex-col overflow-hidden" style={{ backgroundColor: platformSettings.brandSurfaceColor, fontFamily: "var(--platform-brand-font)" }}>
           <PlatformLandingHero
             settings={platformSettings}
             navigation={visiblePlatformNavigation}

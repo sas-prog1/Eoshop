@@ -21,6 +21,17 @@ body {
   outline-offset: 3px;
 }
 
+.platform-auth-input:focus {
+  border-color: var(--platform-brand-accent, #B18A46);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--platform-brand-accent, #B18A46) 16%, transparent);
+}
+
+.platform-auth-field-icon,
+.platform-auth-links {
+  color: var(--platform-brand-accent, #B18A46);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

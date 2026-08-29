@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, Phone, ShieldCheck, Sparkles, UserRound } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, Phone, UserRound } from "lucide-react";
 import { useUiAdapters } from "../../adapters/UiAdaptersContext";
 import type { UserProfile } from "../../adapters/uiAdapters";
 import { uiErrorMessage } from "../../adapters/uiAdapters";
-import { usePlatformSettings } from "../../adapters/PlatformSettingsContext";
 import { authorizeReturnTarget, readSafeReturnTarget } from "../../app/safeReturnTarget";
+import PlatformAuthShell from "./PlatformAuthShell";
 
 type AuthMode = "login" | "register" | "forgot" | "reset";
 
@@ -17,7 +17,6 @@ interface AuthRoutePageProps {
 
 export default function AuthRoutePage({ mode, currentUser, restoring, onAuthenticated }: AuthRoutePageProps) {
   const { auth, provisioning } = useUiAdapters();
-  const { settings } = usePlatformSettings();
   const [name, setName] = useState("");
   const [email, setEmail] = useState(() => new URLSearchParams(window.location.search).get("email") ?? "");
   const [phone, setPhone] = useState("");
@@ -77,33 +76,17 @@ export default function AuthRoutePage({ mode, currentUser, restoring, onAuthenti
     forgot: ["استعادة الوصول", "أدخل بريدك وسنرسل التعليمات إن كان الحساب موجودًا."],
     reset: ["تعيين كلمة مرور جديدة", "استخدم الرابط الآمن واختر كلمة مرور قوية لا تقل عن 10 أحرف."],
   };
-  const inputClass = "w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-normal outline-none transition focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-100";
+  const modeLabels: Record<AuthMode, string> = {
+    login: "دخول آمن إلى بوابة التاجر",
+    register: "إنشاء حساب تاجر جديد",
+    forgot: "استعادة آمنة للوصول",
+    reset: "تحديث بيانات الدخول",
+  };
+  const inputClass = "platform-auth-input min-h-12 w-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-normal outline-none transition";
 
   return (
-    <main dir="rtl" className="min-h-screen bg-slate-950 px-4 py-8 text-slate-900 sm:px-8">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl overflow-hidden rounded-[2rem] bg-white shadow-2xl lg:grid-cols-[0.9fr_1.1fr]">
-        <section className="relative hidden overflow-hidden bg-gradient-to-br from-sky-600 via-indigo-700 to-slate-950 p-10 text-white lg:flex lg:flex-col lg:justify-between">
-          <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
-          <a href="/" className="relative flex items-center gap-3 font-black">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/15"><Sparkles className="h-6 w-6" /></span>
-            <span><b className="block text-xl">{settings.platformName}</b><small className="text-sky-100">{settings.tagline}</small></span>
-          </a>
-          <div className="relative space-y-5">
-            <p className="text-4xl font-black leading-tight">متجرك يبدأ بخطوات واضحة، وليس بنوافذ متفرقة.</p>
-            <ul className="space-y-3 text-sm text-sky-50">
-              {["جلسة حقيقية محمية من الخادم", "مسودة متجر تستمر بعد إعادة التحميل", "مراجعة وتجهيز ونشر بحالات واضحة"].map((text) => (
-                <li key={text} className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-emerald-300" />{text}</li>
-              ))}
-            </ul>
-          </div>
-          <p className="relative text-xs text-sky-100">لن نطلب منك بيانات دفع أو وعود نشر غير متاحة في هذه الخطوة.</p>
-        </section>
-
-        <section className="flex items-center p-6 sm:p-10 lg:p-14">
-          <div className="mx-auto w-full max-w-md">
-            <a href="/" className="mb-8 inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-sky-700"><ArrowLeft className="h-4 w-4" />العودة للرئيسية</a>
-            <h1 className="text-3xl font-black text-slate-950">{titles[mode][0]}</h1>
-            <p className="mt-2 text-sm leading-7 text-slate-500">{titles[mode][1]}</p>
+    <PlatformAuthShell modeLabel={modeLabels[mode]} title={titles[mode][0]} description={titles[mode][1]}>
+            <a href="/" className="mt-7 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-slate-500 transition hover:text-slate-950"><ArrowLeft className="h-4 w-4" />العودة للرئيسية</a>
 
             {error && <div role="alert" className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-700">{error}</div>}
             {notice && <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800">{notice}</div>}
@@ -120,24 +103,21 @@ export default function AuthRoutePage({ mode, currentUser, restoring, onAuthenti
               )}
               {(mode === "register" || mode === "reset") && <Field icon={LockKeyhole} label="تأكيد كلمة المرور"><input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required minLength={10} autoComplete="new-password" className={inputClass} /></Field>}
 
-              <button disabled={busy || restoring} className="w-full rounded-2xl bg-slate-950 px-5 py-3.5 text-sm font-black text-white transition hover:bg-sky-700 disabled:cursor-wait disabled:opacity-60">
+              <button disabled={busy || restoring} style={{ backgroundColor: "var(--platform-brand-accent)", color: "var(--platform-brand-accent-foreground)" }} className="min-h-12 w-full px-5 py-3.5 text-sm font-black shadow-[0_12px_28px_rgba(8,23,37,0.14)] transition hover:brightness-95 disabled:cursor-wait disabled:opacity-60">
                 {busy ? "جاري المعالجة..." : mode === "login" ? "تسجيل الدخول" : mode === "register" ? "إنشاء الحساب والمتابعة" : mode === "forgot" ? "إرسال تعليمات الاستعادة" : "تحديث كلمة المرور"}
               </button>
             </form>
 
-            <nav className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-bold text-sky-700">
+            <nav className="platform-auth-links mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-bold">
               {mode !== "login" && <a href="/login">لدي حساب</a>}
               {mode !== "register" && <a href="/register">إنشاء حساب جديد</a>}
               {mode === "login" && <a href="/forgot-password">نسيت كلمة المرور؟</a>}
               {mode === "reset" && notice && <a href="/login">الانتقال لتسجيل الدخول</a>}
             </nav>
-          </div>
-        </section>
-      </div>
-    </main>
+    </PlatformAuthShell>
   );
 }
 
 function Field({ icon: Icon, label, children }: { icon: React.ComponentType<{ className?: string }>; label: string; children: React.ReactNode }) {
-  return <label className="relative block text-sm font-bold text-slate-700"><span className="mb-2 flex items-center gap-2"><Icon className="h-4 w-4 text-sky-600" />{label}</span>{children}</label>;
+  return <label className="relative block text-sm font-bold text-slate-700"><span className="mb-2 flex items-center gap-2"><Icon className="platform-auth-field-icon h-4 w-4" />{label}</span>{children}</label>;
 }

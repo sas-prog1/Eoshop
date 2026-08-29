@@ -74,7 +74,14 @@ export function PlatformSettingsProvider({ children }: { children: ReactNode }) 
     const root = document.documentElement;
     root.style.setProperty("--platform-primary", settings.primaryColor);
     root.style.setProperty("--platform-primary-foreground", readableForeground(settings.primaryColor));
-  }, [settings.primaryColor]);
+    root.style.setProperty("--platform-brand-primary", settings.brandPrimaryColor);
+    root.style.setProperty("--platform-brand-primary-foreground", readableForeground(settings.brandPrimaryColor));
+    root.style.setProperty("--platform-brand-accent", settings.brandAccentColor);
+    root.style.setProperty("--platform-brand-accent-foreground", readableForeground(settings.brandAccentColor));
+    root.style.setProperty("--platform-brand-surface", settings.brandSurfaceColor);
+    root.style.setProperty("--platform-brand-surface-foreground", readableForeground(settings.brandSurfaceColor));
+    root.style.setProperty("--platform-brand-font", `"${settings.brandFontFamily}", "Cairo", sans-serif`);
+  }, [settings]);
 
   const value = useMemo(() => ({ settings, loading, error, reload, replace }), [error, loading, reload, replace, settings]);
   return <PlatformSettingsContext.Provider value={value}>{children}</PlatformSettingsContext.Provider>;

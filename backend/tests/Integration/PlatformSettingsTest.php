@@ -45,6 +45,12 @@ class PlatformSettingsTest extends TestCase
             ->assertJsonPath('data.revision', 1)
             ->assertJsonPath('data.platformName', 'مبتكر')
             ->assertJsonPath('data.primaryColor', '#0284C7')
+            ->assertJsonPath('data.brandPrimaryColor', '#081725')
+            ->assertJsonPath('data.brandAccentColor', '#B18A46')
+            ->assertJsonPath('data.brandSurfaceColor', '#F8F6F1')
+            ->assertJsonPath('data.brandFontFamily', 'Tajawal')
+            ->assertJsonPath('data.landingHeroImageUrl', null)
+            ->assertJsonPath('data.authImageUrl', null)
             ->assertJsonPath('data.navigationItems.0.key', 'templates')
             ->assertJsonPath('data.navigationItems.2.key', 'pricing')
             ->assertJsonMissingPath('data.updatedAt')
@@ -120,6 +126,18 @@ class PlatformSettingsTest extends TestCase
         }
         $this->actingAs($manager)->putJson('/api/admin/platform-settings', [
             ...$this->payload(),
+            'brandFontFamily' => 'Remote Font',
+        ])->assertUnprocessable()->assertJsonValidationErrors('brandFontFamily');
+        $this->actingAs($manager)->putJson('/api/admin/platform-settings', [
+            ...$this->payload(),
+            'brandAccentColor' => 'gold',
+        ])->assertUnprocessable()->assertJsonValidationErrors('brandAccentColor');
+        $this->actingAs($manager)->putJson('/api/admin/platform-settings', [
+            ...$this->payload(),
+            'authImageUrl' => 'data:image/png;base64,unsafe',
+        ])->assertUnprocessable()->assertJsonValidationErrors('authImageUrl');
+        $this->actingAs($manager)->putJson('/api/admin/platform-settings', [
+            ...$this->payload(),
             'showPricing' => false,
         ])->assertUnprocessable()->assertJsonValidationErrors('navigationItems');
         $this->assertDatabaseHas('platform_settings', ['id' => 1, 'revision' => 1]);
@@ -133,6 +151,12 @@ class PlatformSettingsTest extends TestCase
             ...$this->payload(),
             'platformName' => 'متاجر اليمن',
             'primaryColor' => '#0F766E',
+            'brandPrimaryColor' => '#102A43',
+            'brandAccentColor' => '#C79A43',
+            'brandSurfaceColor' => '#FAF7F0',
+            'brandFontFamily' => 'IBM Plex Sans Arabic',
+            'landingHeroImageUrl' => 'https://cdn.example.test/platform/landing.jpg',
+            'authImageUrl' => 'https://cdn.example.test/platform/auth.jpg',
             'announcementEnabled' => true,
             'announcementText' => 'مرحبًا بكم في النسخة التجريبية.',
             'supportEmail' => ' SUPPORT@EXAMPLE.TEST ',
@@ -142,12 +166,17 @@ class PlatformSettingsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.revision', 2)
             ->assertJsonPath('data.platformName', 'متاجر اليمن')
+            ->assertJsonPath('data.brandPrimaryColor', '#102A43')
+            ->assertJsonPath('data.brandFontFamily', 'IBM Plex Sans Arabic')
+            ->assertJsonPath('data.authImageUrl', 'https://cdn.example.test/platform/auth.jpg')
             ->assertJsonPath('data.supportEmail', 'support@example.test')
             ->assertJsonPath('data.updatedByUserId', $manager->id);
         $this->assertDatabaseHas('platform_settings', [
             'id' => 1,
             'revision' => 2,
             'platform_name' => 'متاجر اليمن',
+            'brand_primary_color' => '#102A43',
+            'brand_font_family' => 'IBM Plex Sans Arabic',
             'updated_by_user_id' => $manager->id,
         ]);
         $this->assertDatabaseHas('admin_audit_logs', [
@@ -199,6 +228,28 @@ class PlatformSettingsTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('cannot be removed safely');
         $migration->down();
+    }
+
+    public function test_changed_visual_identity_refuses_destructive_rollback(): void
+    {
+        PlatformSetting::query()->whereKey(1)->update(['auth_image_url' => 'https://cdn.example.test/platform/auth.jpg']);
+        $migration = require database_path('migrations/system/2026_08_28_000015_add_platform_visual_identity.php');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('auth_image_url has changed and cannot be removed safely');
+        $migration->down();
+    }
+
+    public function test_database_rejects_invalid_visual_identity_color(): void
+    {
+        $this->expectException(QueryException::class);
+        DB::table('platform_settings')->where('id', 1)->update(['brand_primary_color' => '#xyzxyz']);
+    }
+
+    public function test_database_rejects_unapproved_visual_identity_font(): void
+    {
+        $this->expectException(QueryException::class);
+        DB::table('platform_settings')->where('id', 1)->update(['brand_font_family' => 'Remote Font']);
     }
 
     public function test_changed_navigation_refuses_destructive_rollback(): void
@@ -283,6 +334,12 @@ class PlatformSettingsTest extends TestCase
             'tagline' => 'منصة المتاجر الرقمية',
             'logoUrl' => null,
             'primaryColor' => '#0284C7',
+            'brandPrimaryColor' => '#081725',
+            'brandAccentColor' => '#B18A46',
+            'brandSurfaceColor' => '#F8F6F1',
+            'brandFontFamily' => 'Tajawal',
+            'landingHeroImageUrl' => null,
+            'authImageUrl' => null,
             'landingHeadline' => 'أنشئ متجرك الإلكتروني بذكاء وسرعة',
             'landingDescription' => 'صمم هوية متجرك واختر قالبًا قابلًا للتخصيص، ثم أرسل طلبك للمراجعة والتجهيز قبل النشر.',
             'announcementEnabled' => false,

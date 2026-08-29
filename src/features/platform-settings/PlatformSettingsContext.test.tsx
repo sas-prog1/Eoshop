@@ -31,6 +31,10 @@ describe("PlatformSettingsProvider", () => {
     screen.getByRole("button", { name: "replace" }).click();
     expect(await screen.findByText("حفظ الإدارة")).toBeTruthy();
     expect(document.documentElement.style.getPropertyValue("--platform-primary")).toBe("#0284C7");
+    expect(document.documentElement.style.getPropertyValue("--platform-brand-primary")).toBe("#081725");
+    expect(document.documentElement.style.getPropertyValue("--platform-brand-accent")).toBe("#B18A46");
+    expect(document.documentElement.style.getPropertyValue("--platform-brand-surface")).toBe("#F8F6F1");
+    expect(document.documentElement.style.getPropertyValue("--platform-brand-font")).toContain("Tajawal");
   });
 
   it("ignores a late response after unmount", async () => {

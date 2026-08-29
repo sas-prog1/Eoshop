@@ -31,6 +31,17 @@ describe("platformSettingsApi", () => {
     }
   });
 
+  it("rejects unsupported brand fonts and unsafe identity images", () => {
+    expect(() => mapPlatformSettings({
+      ...DEFAULT_PLATFORM_SETTINGS,
+      brandFontFamily: "Remote Font",
+    })).toThrow();
+    expect(() => mapPlatformSettings({
+      ...DEFAULT_PLATFORM_SETTINGS,
+      authImageUrl: "data:image/png;base64,unsafe",
+    })).toThrow(/رابط صورة هوية غير آمن/);
+  });
+
   it("loads the public safe projection with an abort signal", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       data: { ...DEFAULT_PLATFORM_SETTINGS, platformName: "هوية الخادم" },
