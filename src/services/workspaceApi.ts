@@ -3,6 +3,7 @@ import { apiClient, ApiError } from "./apiClient";
 import { arrayField, enumField, numberField, record, stringField } from "./apiContract";
 import { sanitizeCheckoutConfig } from "../contracts/checkoutPolicy";
 import { defaultStorefrontSections, validStorefrontSections } from "../contracts/storefrontSections";
+import { cloneStorefrontMarketingBlocks, validStorefrontMarketingBlocks } from "../contracts/storefrontMarketingBlocks";
 
 export interface StoreWorkspace {
   tenantId: string;
@@ -85,12 +86,13 @@ const optionalStringKeys = [
   "logoUrl", "textColor", "bgColor", "cardBgColor", "borderColor", "aboutTitle", "aboutText",
   "aboutVision", "aboutImage", "email", "address", "workingHours", "whatsapp", "instagram", "twitter",
   "tiktok", "snapchat", "heroBannerImage", "heroBannerTitle", "heroBannerSubtitle", "heroBannerBadge",
-  "heroBannerButtonText", "checkoutTitle", "checkoutSubtitle", "checkoutNotice", "bankName", "bankAccountName",
+  "heroBannerButtonText", "heroBannerMobileImage", "heroBannerTargetValue", "checkoutTitle", "checkoutSubtitle",
+  "checkoutNotice", "bankName", "bankAccountName",
   "bankIban", "bankAccountNumber", "thankYouTitle", "thankYouMessage",
 ] as const;
 const optionalNumberKeys = [
-  "logoSize", "heroBannerOverlayOpacity", "lowStockWarningThreshold", "minOrderAmount", "freeShippingThreshold",
-  "shippingFee", "taxRate", "cashOnDeliveryFee",
+  "logoSize", "heroBannerOverlayOpacity", "heroBannerFocalPointX", "heroBannerFocalPointY",
+  "lowStockWarningThreshold", "minOrderAmount", "freeShippingThreshold", "shippingFee", "taxRate", "cashOnDeliveryFee",
 ] as const;
 const optionalBooleanKeys = [
   "showHeroBanner", "enableStockManagement", "allowOrdersWhenOutOfStock", "showStockBadge", "requireEmail",
@@ -156,9 +158,14 @@ export function mapStoreConfig(value: unknown): StoreConfig {
   }
   if (dto.logoType !== undefined && dto.logoType !== null) config.logoType = enumField(dto, "logoType", ["icon", "image"] as const, "إعدادات مساحة العمل");
   if (dto.heroBannerHeight !== undefined && dto.heroBannerHeight !== null) config.heroBannerHeight = enumField(dto, "heroBannerHeight", ["compact", "medium", "large"] as const, "إعدادات مساحة العمل");
+  if (dto.heroBannerTargetType !== undefined && dto.heroBannerTargetType !== null) config.heroBannerTargetType = enumField(dto, "heroBannerTargetType", ["products", "category", "product"] as const, "إعدادات مساحة العمل");
+  if (dto.marketingBlocks !== undefined && dto.marketingBlocks !== null) {
+    if (!validStorefrontMarketingBlocks(dto.marketingBlocks)) return invalid("مساحات التسويق في واجهة المتجر");
+    config.marketingBlocks = cloneStorefrontMarketingBlocks(dto.marketingBlocks);
+  }
   if (dto.customWallets !== undefined && dto.customWallets !== null) config.customWallets = arrayField(dto, "customWallets", "إعدادات مساحة العمل").map(mapWallet);
   if (dto.customCoupons !== undefined && dto.customCoupons !== null) config.customCoupons = arrayField(dto, "customCoupons", "إعدادات مساحة العمل").map(mapCoupon);
-  for (const key of ["logoUrl", "heroBannerImage", "aboutImage"] as const) {
+  for (const key of ["logoUrl", "heroBannerImage", "heroBannerMobileImage", "aboutImage"] as const) {
     if (/^(?:data|blob):/i.test(config[key] ?? "")) config[key] = "";
   }
 

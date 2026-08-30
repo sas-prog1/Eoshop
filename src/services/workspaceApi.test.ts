@@ -3,6 +3,22 @@ import { apiClient } from "./apiClient";
 import { workspaceApi } from "./workspaceApi";
 import type { StoreConfig } from "../types";
 import { defaultStorefrontSections } from "../contracts/storefrontSections";
+import type { StorefrontMarketingBlock } from "../contracts/storefrontMarketingBlocks";
+
+const marketingBlock: StorefrontMarketingBlock = {
+  id: "77777777-7777-4777-8777-777777777777",
+  placement: "hero_bento",
+  position: 1,
+  enabled: true,
+  contentType: "category",
+  title: "اكتشف التقنية",
+  ctaLabel: "استكشف الآن",
+  imageUrl: "/api/store-assets/tenant-1/88888888-8888-4888-8888-888888888888",
+  altText: "كاميرا ضمن مساحة التقنية",
+  targetType: "category",
+  targetValue: "إلكترونيات",
+  disclosure: "none",
+};
 
 const config: StoreConfig = {
   storeName: "Server Store",
@@ -87,6 +103,34 @@ describe("workspaceApi", () => {
     await expect(workspaceApi.load("tenant-1")).rejects.toMatchObject({ category: "unexpected" });
   });
 
+  it("preserves the server-owned marketing contract and hero target fields", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data: {
+        tenantId: "tenant-1",
+        revision: 7,
+        catalogRevision: 3,
+        capabilities: { inventoryView: true, inventoryManage: true },
+        updatedAt: null,
+        config: {
+          ...config,
+          marketingBlocks: [marketingBlock],
+          heroBannerMobileImage: "/api/store-assets/tenant-1/99999999-9999-4999-8999-999999999999",
+          heroBannerTargetType: "category",
+          heroBannerTargetValue: "إلكترونيات",
+          heroBannerFocalPointX: 70,
+          heroBannerFocalPointY: 40,
+        },
+      },
+    }), { status: 200 })));
+
+    const workspace = await workspaceApi.load("tenant-1");
+
+    expect(workspace.config.marketingBlocks).toEqual([marketingBlock]);
+    expect(workspace.config.marketingBlocks?.[0]).not.toBe(marketingBlock);
+    expect(workspace.config.heroBannerTargetType).toBe("category");
+    expect(workspace.config.heroBannerFocalPointX).toBe(70);
+  });
+
   it("normalizes the nullable onboarding contact before opening a newly provisioned workspace", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
       data: {
@@ -140,6 +184,7 @@ describe("workspaceApi", () => {
         updatedAt: "2026-08-15T12:01:00Z",
         config: {
           ...config,
+          marketingBlocks: [marketingBlock],
           products: [
             { ...config.products[0], id: "22222222-2222-4222-8222-222222222222", price: "12.50" },
             { ...config.products[1], id: "66666666-6666-4666-8666-666666666666", price: "8.00" },
@@ -153,7 +198,7 @@ describe("workspaceApi", () => {
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("crypto", { randomUUID: () => "33333333-3333-4333-8333-333333333333" });
 
-    const result = await workspaceApi.save("tenant-1", 7, 3, config, ["44444444-4444-4444-8444-444444444444"]);
+    const result = await workspaceApi.save("tenant-1", 7, 3, { ...config, marketingBlocks: [marketingBlock] }, ["44444444-4444-4444-8444-444444444444"]);
 
     const request = fetchMock.mock.calls[1][1] as RequestInit;
     const body = JSON.parse(request.body as string);
@@ -164,6 +209,7 @@ describe("workspaceApi", () => {
     expect(body.config.products[1].id).toBeUndefined();
     expect(body.config.products[0].basePrice).toBe("12.50");
     expect(body.config.products[0].status).toBe("draft");
+    expect(body.config.marketingBlocks).toEqual([marketingBlock]);
     expect(result.config.products.map((product) => product.id)).toEqual([
       "22222222-2222-4222-8222-222222222222",
       "66666666-6666-4666-8666-666666666666",

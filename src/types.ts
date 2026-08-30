@@ -1,3 +1,5 @@
+import type { StorefrontMarketingBlock, StorefrontMarketingTargetType } from "./contracts/storefrontMarketingBlocks";
+
 export interface Product {
   id: string;
   revision?: number;
@@ -87,6 +89,12 @@ export interface StoreConfig {
   heroBannerButtonText?: string;
   heroBannerHeight?: "compact" | "medium" | "large";
   heroBannerOverlayOpacity?: number;
+  heroBannerMobileImage?: string;
+  heroBannerTargetType?: Exclude<StorefrontMarketingTargetType, "external">;
+  heroBannerTargetValue?: string;
+  heroBannerFocalPointX?: number;
+  heroBannerFocalPointY?: number;
+  marketingBlocks?: StorefrontMarketingBlock[];
 
   // --- INVENTORY MANAGEMENT SETTINGS (إدارة المخزون) ---
   enableStockManagement?: boolean;

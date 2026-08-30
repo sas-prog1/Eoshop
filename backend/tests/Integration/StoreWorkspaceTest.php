@@ -2539,6 +2539,186 @@ class StoreWorkspaceTest extends TestCase
         Storage::disk('local')->assertMissing($paths[$prunable['id']]);
     }
 
+    public function test_storefront_marketing_blocks_round_trip_and_public_projection_are_server_owned(): void
+    {
+        Storage::fake('local');
+        [$tenant, $owner, $domain] = $this->readyTenant('marketing-round-trip');
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+        $this->assertIsString($png);
+        $asset = $this->actingAs($owner)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->post("/api/merchant/stores/{$tenant->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('marketing.png', $png),
+            ])->assertCreated()->json('data');
+        $workspace = $this->actingAs($owner)
+            ->getJson("/api/merchant/stores/{$tenant->id}/workspace")
+            ->assertOk()->json('data');
+        $makeBlock = static fn (string $placement, int $position, array $overrides = []): array => [
+            'id' => (string) Str::uuid(),
+            'placement' => $placement,
+            'position' => $position,
+            'enabled' => true,
+            'contentType' => 'category',
+            'title' => 'واجهة تسويقية',
+            'subtitle' => 'وصف موجز للمساحة',
+            'badge' => 'جديد',
+            'ctaLabel' => 'استكشف الآن',
+            'imageUrl' => $asset['url'],
+            'mobileImageUrl' => $asset['url'],
+            'altText' => 'صورة مساحة تسويقية',
+            'backgroundColor' => '#112233',
+            'textColor' => '#ffffff',
+            'overlayOpacity' => 30,
+            'focalPointX' => 50,
+            'focalPointY' => 45,
+            'targetType' => 'products',
+            'disclosure' => 'none',
+            ...$overrides,
+        ];
+        $config = $workspace['config'];
+        $config['heroBannerMobileImage'] = $asset['url'];
+        $config['heroBannerTargetType'] = 'category';
+        $config['heroBannerTargetValue'] = 'General';
+        $config['heroBannerFocalPointX'] = 64;
+        $config['heroBannerFocalPointY'] = 38;
+        $config['marketingBlocks'] = [
+            $makeBlock('hero_bento', 1, ['targetType' => 'category', 'targetValue' => 'General']),
+            $makeBlock('side_ad', 1, ['enabled' => false]),
+            $makeBlock('discovery', 1, ['startsAt' => '2099-01-01T00:00:00Z']),
+        ];
+
+        $saved = $this->actingAs($owner)
+            ->patchJson("/api/merchant/stores/{$tenant->id}/workspace", [
+                'revision' => $workspace['revision'],
+                'catalogRevision' => $workspace['catalogRevision'],
+                'config' => $config,
+                'archiveProductIds' => [],
+            ])->assertOk()
+            ->assertJsonPath('data.revision', 2)
+            ->assertJsonCount(3, 'data.config.marketingBlocks')
+            ->assertJsonPath('data.config.heroBannerTargetType', 'category')
+            ->assertJsonPath('data.config.heroBannerFocalPointX', 64)
+            ->json('data');
+
+        $this->actingAs($owner)
+            ->patchJson("/api/merchant/stores/{$tenant->id}/workspace", [
+                'revision' => $saved['revision'],
+                'catalogRevision' => $saved['catalogRevision'],
+                'config' => $saved['config'],
+                'archiveProductIds' => [],
+            ])->assertOk()
+            ->assertJsonPath('data.revision', 2)
+            ->assertJsonPath('data.catalogRevision', 1);
+
+        Auth::forgetGuards();
+        $this->flushSession();
+        $this->getJson("http://{$domain}/api/store/config")
+            ->assertOk()
+            ->assertJsonCount(1, 'data.config.marketingBlocks')
+            ->assertJsonPath('data.config.marketingBlocks.0.placement', 'hero_bento');
+    }
+
+    public function test_storefront_marketing_blocks_reject_deletion_invalid_layout_targets_and_foreign_assets(): void
+    {
+        Storage::fake('local');
+        [$tenant, $owner] = $this->readyTenant('marketing-validation');
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+        $this->assertIsString($png);
+        $asset = $this->actingAs($owner)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->post("/api/merchant/stores/{$tenant->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('validation.png', $png),
+            ])->assertCreated()->json('data');
+        $workspace = $this->actingAs($owner)->getJson("/api/merchant/stores/{$tenant->id}/workspace")
+            ->assertOk()->json('data');
+        $block = [
+            'id' => (string) Str::uuid(), 'placement' => 'hero_bento', 'position' => 1,
+            'enabled' => true, 'contentType' => 'category', 'title' => 'مساحة صالحة',
+            'ctaLabel' => 'استكشف الآن', 'imageUrl' => $asset['url'], 'altText' => 'صورة صالحة',
+            'targetType' => 'category', 'targetValue' => 'General', 'disclosure' => 'none',
+        ];
+        $workspace['config']['marketingBlocks'] = [$block];
+        $saved = $this->actingAs($owner)->patchJson("/api/merchant/stores/{$tenant->id}/workspace", [
+            'revision' => 1, 'catalogRevision' => 1, 'config' => $workspace['config'], 'archiveProductIds' => [],
+        ])->assertOk()->json('data');
+
+        $deleted = $saved['config'];
+        unset($deleted['marketingBlocks']);
+        $this->actingAs($owner)->patchJson("/api/merchant/stores/{$tenant->id}/workspace", [
+            'revision' => 2, 'catalogRevision' => 1, 'config' => $deleted, 'archiveProductIds' => [],
+        ])->assertUnprocessable()->assertJsonPath('code', 'workspace_marketing_blocks_required');
+
+        $foreign = $saved['config'];
+        $foreign['marketingBlocks'][0]['imageUrl'] = '/api/store-assets/another-tenant/'.Str::uuid();
+        $this->actingAs($owner)->patchJson("/api/merchant/stores/{$tenant->id}/workspace", [
+            'revision' => 2, 'catalogRevision' => 1, 'config' => $foreign, 'archiveProductIds' => [],
+        ])->assertUnprocessable()->assertJsonPath('code', 'workspace_asset_path_invalid');
+
+        $gapped = $saved['config'];
+        $gapped['marketingBlocks'][] = [...$block, 'id' => (string) Str::uuid(), 'position' => 3];
+        $this->actingAs($owner)->patchJson("/api/merchant/stores/{$tenant->id}/workspace", [
+            'revision' => 2, 'catalogRevision' => 1, 'config' => $gapped, 'archiveProductIds' => [],
+        ])->assertUnprocessable()->assertJsonPath('code', 'workspace_validation_failed');
+
+        $unsafe = $saved['config'];
+        $unsafe['marketingBlocks'][0] = [
+            ...$block,
+            'contentType' => 'campaign',
+            'targetType' => 'external',
+            'targetValue' => 'https://user:password@example.test/campaign',
+            'disclosure' => 'sponsored',
+            'sponsorName' => 'راعي الحملة',
+        ];
+        $this->actingAs($owner)->patchJson("/api/merchant/stores/{$tenant->id}/workspace", [
+            'revision' => 2, 'catalogRevision' => 1, 'config' => $unsafe, 'archiveProductIds' => [],
+        ])->assertUnprocessable()->assertJsonPath('code', 'workspace_validation_failed');
+    }
+
+    public function test_storefront_placement_asset_budgets_use_the_strictest_reference_limit(): void
+    {
+        Storage::fake('local');
+        [$tenant, $owner] = $this->readyTenant('marketing-budgets');
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+        $this->assertIsString($png);
+        $largePng = $png.str_repeat('x', 360 * 1024);
+        $asset = $this->actingAs($owner)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->post("/api/merchant/stores/{$tenant->id}/assets", [
+                'image' => UploadedFile::fake()->createWithContent('placement-budget.png', $largePng),
+            ])->assertCreated()
+            ->assertJsonPath('data.byteSize', strlen($largePng))
+            ->json('data');
+        $workspace = $this->actingAs($owner)->getJson("/api/merchant/stores/{$tenant->id}/workspace")
+            ->assertOk()->json('data');
+        $block = static fn (string $placement): array => [
+            'id' => (string) Str::uuid(), 'placement' => $placement, 'position' => 1,
+            'enabled' => true, 'contentType' => 'campaign', 'title' => 'اختبار الميزانية',
+            'ctaLabel' => 'استكشف الآن', 'imageUrl' => $asset['url'], 'altText' => 'صورة اختبار الميزانية',
+            'targetType' => 'products', 'disclosure' => 'none',
+        ];
+
+        $discovery = $workspace['config'];
+        $discovery['marketingBlocks'] = [$block('discovery')];
+        $this->actingAs($owner)->patchJson("/api/merchant/stores/{$tenant->id}/workspace", [
+            'revision' => 1, 'catalogRevision' => 1, 'config' => $discovery, 'archiveProductIds' => [],
+        ])->assertConflict()->assertJsonPath('code', 'workspace_asset_budget_exceeded');
+
+        $hero = $workspace['config'];
+        $hero['marketingBlocks'] = [$block('hero_bento')];
+        $saved = $this->actingAs($owner)->patchJson("/api/merchant/stores/{$tenant->id}/workspace", [
+            'revision' => 1, 'catalogRevision' => 1, 'config' => $hero, 'archiveProductIds' => [],
+        ])->assertOk()->assertJsonPath('data.revision', 2)->json('data');
+
+        $reused = $saved['config'];
+        $reused['marketingBlocks'][] = $block('discovery');
+        $this->actingAs($owner)->patchJson("/api/merchant/stores/{$tenant->id}/workspace", [
+            'revision' => 2, 'catalogRevision' => 1, 'config' => $reused, 'archiveProductIds' => [],
+        ])->assertConflict()->assertJsonPath('code', 'workspace_asset_budget_exceeded');
+
+        $this->assertSame(64, (int) config('store_assets.max_assets_per_tenant'));
+        $this->assertSame(75 * 1024 * 1024, (int) config('store_assets.max_total_bytes_per_tenant'));
+    }
+
     public function test_workspace_migration_refuses_destructive_rollback_after_materialization(): void
     {
         [$tenant] = $this->readyTenant('workspace-rollback');

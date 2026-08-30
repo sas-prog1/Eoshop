@@ -13,6 +13,7 @@ use App\Models\TenantSubscription;
 use App\Models\User;
 use App\Support\CheckoutPolicyContract;
 use App\Support\StoreContactTarget;
+use App\Support\StorefrontMarketingBlocks;
 use App\Support\StorefrontSectionLayout;
 use App\Support\TenantWorkspaceReadiness;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -95,6 +96,13 @@ class StoreWorkspaceService
 
                     $currentFullConfig = json_decode((string) $record->config_json, true, 512, JSON_THROW_ON_ERROR);
                     $incomingConfig = StorefrontSectionLayout::forWrite($payload['config'], $currentFullConfig);
+                    $incomingConfig = StorefrontMarketingBlocks::forWrite(
+                        $incomingConfig,
+                        $currentFullConfig,
+                        (string) $lockedTenant->getKey(),
+                        $products,
+                        $payload['archiveProductIds'] ?? [],
+                    );
                     $this->assets->syncReferences($lockedTenant, $currentFullConfig, $incomingConfig);
 
                     $catalog = $this->catalogs->mutate($lockedTenant, [
@@ -133,6 +141,7 @@ class StoreWorkspaceService
     public function initialize(Tenant $tenant, string $configId, array $config): void
     {
         $config = StorefrontSectionLayout::forProvisioning($config);
+        $config = StorefrontMarketingBlocks::forProvisioning($config);
         DB::transaction(function () use ($tenant, $configId, $config): void {
             DB::table('store_configs')->where('is_current', true)->update(['is_current' => false]);
             $now = now();
@@ -252,6 +261,12 @@ class StoreWorkspaceService
         $catalog ??= $this->catalogs->compose($tenant, $public);
         $config['products'] = $catalog['products'];
         $config['currency'] = $catalog['currencyCode'];
+        $config = StorefrontMarketingBlocks::forProjection(
+            $config,
+            (string) $tenant->getKey(),
+            $catalog['products'],
+            $public,
+        );
         if ($public) {
             unset($config['customCoupons']);
             $config['enableOnlineCard'] = false;

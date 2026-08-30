@@ -7,6 +7,7 @@ use App\Support\CheckoutPolicyContract;
 use App\Support\ProductCatalogContract;
 use App\Support\StoreAssetPath;
 use App\Support\StoreContactTarget;
+use App\Support\StorefrontMarketingBlocks;
 use App\Support\StorefrontSectionLayout;
 use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\Foundation\Http\FormRequest;
@@ -33,6 +34,8 @@ class UpdateStoreWorkspaceRequest extends FormRequest
         'bankIban', 'bankAccountNumber', 'enableOnlineCard', 'enableApplePay', 'enableStcPay',
         'enableEWallets', 'customWallets', 'enableCoupons', 'customCoupons', 'thankYouTitle',
         'thankYouMessage', 'enableWhatsAppNotification', 'homeSections',
+        'marketingBlocks', 'heroBannerMobileImage', 'heroBannerTargetType', 'heroBannerTargetValue',
+        'heroBannerFocalPointX', 'heroBannerFocalPointY',
     ];
 
     /** @return array<string, list<mixed>> */
@@ -157,6 +160,7 @@ class UpdateStoreWorkspaceRequest extends FormRequest
             'config.products.*.manageStock' => $boolean,
             'config.products.*.sku' => ['nullable', 'string', 'max:100'],
             'config.products.*.lowStockThreshold' => ['nullable', 'integer', 'min:0', 'max:1000000000'],
+            ...StorefrontMarketingBlocks::rules($managedTenantId),
         ];
     }
 
@@ -170,8 +174,11 @@ class UpdateStoreWorkspaceRequest extends FormRequest
 
     protected function failedValidation(ValidatorContract $validator): void
     {
-        $assetFields = ['config.logoUrl', 'config.heroBannerImage', 'config.aboutImage'];
+        $assetFields = ['config.logoUrl', 'config.heroBannerImage', 'config.heroBannerMobileImage', 'config.aboutImage'];
         $assetError = collect($assetFields)->contains(fn (string $field): bool => $validator->errors()->has($field));
+        $assetError = $assetError || collect($validator->errors()->keys())
+            ->contains(static fn (string $field): bool => str_starts_with($field, 'config.marketingBlocks.')
+                && (str_ends_with($field, '.imageUrl') || str_ends_with($field, '.mobileImageUrl')));
 
         throw new HttpResponseException(response()->json([
             'message' => 'The submitted workspace is invalid.',
@@ -234,6 +241,12 @@ class UpdateStoreWorkspaceRequest extends FormRequest
                 $validator->errors()->add('config.customCoupons', 'Coupon codes must be unique after canonicalization.');
             }
             CheckoutPolicyContract::appendErrors($validator, (array) $this->input('config', []));
+            StorefrontMarketingBlocks::appendErrors(
+                $validator,
+                (array) $this->input('config', []),
+                (array) $this->input('config.products', []),
+                (array) $this->input('archiveProductIds', []),
+            );
 
             if ($this->has('config.homeSections')
                 && ! StorefrontSectionLayout::isValid($this->input('config.homeSections'))) {

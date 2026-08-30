@@ -132,6 +132,7 @@ class StoreAssetService
         $tenantId = (string) $tenant->getKey();
         $current = StoreAssetPath::referencedIds($currentConfig, $tenantId);
         $next = StoreAssetPath::referencedIds($nextConfig, $tenantId);
+        $referenceBudgets = StoreAssetPath::referenceBudgets($nextConfig, $tenantId);
         $ids = array_values(array_unique([...$current, ...$next]));
         sort($ids, SORT_STRING);
         if ($ids === []) {
@@ -144,6 +145,12 @@ class StoreAssetService
             if ($row === null || $row->state !== 'ready' || $row->cleanup_started_at !== null
                 || ! $this->safeOwnedRow($tenant, $row)) {
                 throw new StoreAssetConflict('A referenced managed store asset is unavailable.', 'workspace_asset_unavailable');
+            }
+            if (isset($referenceBudgets[$id]) && (int) $row->byte_size > $referenceBudgets[$id]) {
+                throw new StoreAssetConflict(
+                    'A referenced managed store asset exceeds the byte budget for its storefront placement.',
+                    'workspace_asset_budget_exceeded',
+                );
             }
         }
 

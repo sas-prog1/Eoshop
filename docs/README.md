@@ -33,6 +33,7 @@
 - [WP 5.22 — Merchant launch console](work-packages/WP-5.22-merchant-launch-console.md)
 - [WP 5.23 — Store application dossier, evidence and correction](work-packages/WP-5.23-store-application-dossier.md)
 - [WP 5.27.1 — Public storefront and premium baseline](work-packages/WP-5.27.1-public-storefront.md)
+- [WP 5.27.2A — Tech Bento storefront](work-packages/WP-5.27.2A-tech-bento-storefront.md)
 
 ## Architecture decisions
 
@@ -56,6 +57,7 @@
 - [ADR 0017 — Server-owned draft, resubmission and merchant publication](decisions/ADR-0017-server-owned-draft-resubmission-merchant-publication.md)
 - [ADR 0034 — Canonical merchant launch console](decisions/ADR-0034-canonical-merchant-launch-console.md)
 - [ADR 0035 — Server-owned store application dossier](decisions/ADR-0035-server-owned-store-application-dossier.md)
+- [ADR 0039 — Server-owned storefront marketing blocks](decisions/ADR-0039-server-owned-storefront-marketing-blocks.md)
 
 ## Evidence
 

@@ -4,6 +4,8 @@
 - Date: 2026-08-20
 - Work package: WP 5.8
 
+> Quota-default note: ADR 0039 supersedes the original 20-asset/50-MiB defaults with 64 assets/75 MiB for the bounded storefront marketing-block contract. All lifecycle, tenancy, binding, serving and cleanup rules below remain in force.
+
 ## Context
 
 WP 5.6 introduced a route-owned store operations center and WP 5.7 extracted product editing from the prototype builder. Store identity and appearance still live in the remaining `ControlPanel`, however, behind separate branding and design tabs mixed with checkout, pages, AI and export controls. This makes a simple task such as changing the store name, logo or theme feel like entering a prototype constructor instead of editing the store profile.
