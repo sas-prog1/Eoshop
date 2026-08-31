@@ -333,6 +333,8 @@ const ELEGANT_SHOWCASE_PRESET: StoreConfig = {
 
 export const ELEGANT_PRESET: StoreConfig = {
   ...ELEGANT_SHOWCASE_PRESET,
+  thankYouTitle: "تم استلام طلبك بنجاح",
+  thankYouMessage: "احتفظ برقم الطلب للمتابعة مع المتجر.",
   phone: "",
   email: "",
   address: "",

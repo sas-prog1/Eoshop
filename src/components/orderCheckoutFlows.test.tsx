@@ -124,6 +124,11 @@ describe("server-backed checkout interface", () => {
     resolveOrder(receipt);
     expect(await screen.findByText("EO-SERVER-001")).toBeTruthy();
     expect(screen.getByText("عنوان الإيصال المثبت من الخادم")).toBeTruthy();
+    const elegantReceipt = document.querySelector(".elegant-checkout__receipt");
+    expect(elegantReceipt?.querySelector(".elegant-checkout__success")).toBeTruthy();
+    expect(elegantReceipt?.querySelector(".elegant-checkout__invoice")).toBeTruthy();
+    expect(elegantReceipt?.querySelector(".elegant-checkout__receipt-total")).toBeTruthy();
+    expect(screen.queryByText(/معاينة تصميمية/)).toBeNull();
     expect(screen.getByRole("link", { name: /مشاركة تفاصيل الفاتورة/ }).getAttribute("href")).toContain("967700000000");
     expect(screen.getByText("20.38 YER")).toBeTruthy();
     expect(props.handleCheckout).toHaveBeenCalledTimes(1);
@@ -140,6 +145,9 @@ describe("server-backed checkout interface", () => {
     await user.click(screen.getByRole("button", { name: "معاينة إرسال الطلب" }));
 
     await waitFor(() => expect(screen.getByText(/^PREVIEW-\d+$/)).toBeTruthy());
+    expect(screen.getByText("تم استلام طلبك بنجاح")).toBeTruthy();
+    expect(screen.getByText(/معاينة تصميمية ولا تنشئ طلبًا فعليًا/)).toBeTruthy();
+    expect(screen.queryByText(/🎉/)).toBeNull();
     expect(submitOrder).not.toHaveBeenCalled();
   }, 20_000);
 

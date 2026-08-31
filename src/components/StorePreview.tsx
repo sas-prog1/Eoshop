@@ -1098,28 +1098,42 @@ export default function StorePreview({
 
               {/* SUCCESS VIEW / ORDER COMPLETED RECEIPT */}
               {orderCompleted && placedOrderDetails ? (
-                <div ref={receiptRef} tabIndex={-1} role="status" aria-live="polite" className="max-w-3xl mx-auto space-y-6 animate-fadeIn outline-none">
+                <div
+                  ref={receiptRef}
+                  tabIndex={-1}
+                  role="status"
+                  aria-live="polite"
+                  className={`${isElegant ? "elegant-checkout__receipt max-w-5xl" : "max-w-3xl"} mx-auto space-y-6 animate-fadeIn outline-none`}
+                >
                   {/* Top Success Banner */}
-                  <div className="p-6 md:p-8 rounded-3xl bg-emerald-900/90 text-white text-center space-y-3 shadow-xl border border-emerald-500/30">
-                    <div className="w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-md animate-bounce">
+                  <div className={`p-6 md:p-8 rounded-3xl bg-emerald-900/90 text-white text-center space-y-3 shadow-xl border border-emerald-500/30 ${isElegant ? "elegant-checkout__success" : ""}`}>
+                    {isElegant ? (
+                      <span className="elegant-checkout__success-eyebrow">
+                        {mode === "preview" ? "معاينة الإيصال" : "اكتمل إرسال الطلب"}
+                      </span>
+                    ) : null}
+                    <div className={`w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-md animate-bounce ${isElegant ? "elegant-checkout__success-icon" : ""}`}>
                       <Check className="w-10 h-10 stroke-[3]" />
                     </div>
                     <h2 className="text-xl md:text-2xl font-black">{placedOrderDetails.presentation.title}</h2>
                     <p className="text-xs md:text-sm text-emerald-100 max-w-lg mx-auto leading-relaxed">{placedOrderDetails.presentation.message}</p>
-                    <div className="inline-flex items-center gap-2 bg-emerald-950/80 px-4 py-2 rounded-xl text-xs font-mono text-emerald-300 border border-emerald-600/40">
+                    <div className={`inline-flex items-center gap-2 bg-emerald-950/80 px-4 py-2 rounded-xl text-xs font-mono text-emerald-300 border border-emerald-600/40 ${isElegant ? "elegant-checkout__reference" : ""}`}>
                       <span>رقم المرجعية المعتمد:</span>
                       <strong className="text-white font-bold text-sm">{placedOrderDetails.orderNum}</strong>
                     </div>
+                    {isElegant && mode === "preview" ? (
+                      <p className="elegant-checkout__preview-note">هذه معاينة تصميمية ولا تنشئ طلبًا فعليًا.</p>
+                    ) : null}
                   </div>
 
                   {/* Printable Invoice Receipt Card */}
-                  <div className={`p-6 md:p-8 rounded-3xl border shadow-lg space-y-6 text-slate-800 ${
+                  <div className={`p-6 md:p-8 rounded-3xl border shadow-lg space-y-6 text-slate-800 ${isElegant ? "elegant-checkout__invoice" : ""} ${
                     !isElegant ? "bg-white border-slate-200" : "bg-stone-50"
                   }`}>
                     {/* Invoice Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 border-slate-200">
+                    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 border-slate-200 ${isElegant ? "elegant-checkout__invoice-header" : ""}`}>
                       <div className="space-y-1">
-                        <span className="text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-0.5 rounded-md font-mono">
+                        <span className={`text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-0.5 rounded-md font-mono ${isElegant ? "elegant-checkout__invoice-label" : ""}`}>
                           {isElegant ? "فاتورة طلب إلكترونية" : "فاتورة طلب إلكترونية 🧾"}
                         </span>
                         <h3 className="text-lg font-black text-slate-900">{config.storeName}</h3>
@@ -1128,14 +1142,14 @@ export default function StorePreview({
 
                       <div className="text-right sm:text-left space-y-1">
                         <span className="text-xs text-slate-500 block">حالة الطلب:</span>
-                        <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 ${isElegant ? "elegant-checkout__status" : ""}`}>
                           {isElegant ? "قيد التجهيز والتوصيل" : "قيد التجهيز والتوصيل ⏳"}
                         </span>
                       </div>
                     </div>
 
                     {/* Customer & Shipping Details Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs leading-relaxed">
+                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs leading-relaxed ${isElegant ? "elegant-checkout__receipt-details" : ""}`}>
                       <div className="space-y-1.5">
                         <h4 className="font-bold text-slate-900 flex items-center gap-1.5">
                           <MapPin className="w-3.5 h-3.5 text-sky-600" />
@@ -1168,11 +1182,11 @@ export default function StorePreview({
                     </div>
 
                     {/* Ordered Items Table */}
-                    <div className="space-y-3">
+                    <div className={`space-y-3 ${isElegant ? "elegant-checkout__receipt-items" : ""}`}>
                       <h4 className="font-bold text-xs text-slate-900">المنتجات المطلوبة:</h4>
                       <div className="divide-y divide-slate-200 border rounded-2xl overflow-hidden text-xs">
                         {placedOrderDetails.items.map((it: any, idx: number) => (
-                          <div key={idx} className="p-3 bg-white flex items-center justify-between gap-3">
+                          <div key={idx} className={`p-3 bg-white flex items-center justify-between gap-3 ${isElegant ? "elegant-checkout__receipt-line" : ""}`}>
                             <div className="flex items-center gap-2.5">
                               <div className="w-10 h-10 bg-slate-100 rounded-lg p-1 shrink-0 overflow-hidden border">
                                 <ProductArt keyword={it.product.imageKeyword} primaryColor={primaryColor} imageUrl={it.product.imageUrl} alt={it.product.name} sizes="40px" />
@@ -1191,7 +1205,7 @@ export default function StorePreview({
                     </div>
 
                     {/* Total Summary */}
-                    <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-2 text-xs font-mono">
+                    <div className={`p-4 rounded-2xl bg-slate-900 text-white space-y-2 text-xs font-mono ${isElegant ? "elegant-checkout__receipt-total" : ""}`}>
                       <div className="flex justify-between text-slate-300">
                         <span>المجموع الفرعي:</span>
                         <span>{placedOrderDetails.subtotal} {placedOrderDetails.currency}</span>
@@ -1227,12 +1241,12 @@ export default function StorePreview({
                     </div>
 
                     {/* Action Buttons Row */}
-                    <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                    <div className={`flex flex-col sm:flex-row items-center gap-3 pt-2 ${isElegant ? "elegant-checkout__receipt-actions" : ""}`}>
                       {getWhatsAppInvoiceUrl(placedOrderDetails) && <a
                         href={getWhatsAppInvoiceUrl(placedOrderDetails)!}
                         target="_blank"
                         rel="noreferrer"
-                        className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition"
+                        className={`w-full sm:flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition ${isElegant ? "elegant-checkout__receipt-share" : ""}`}
                       >
                         <MessageSquare className="w-4 h-4 fill-white" />
                         <span>مشاركة تفاصيل الفاتورة عبر WhatsApp</span>
@@ -1240,7 +1254,7 @@ export default function StorePreview({
 
                       <button
                         onClick={() => handlePrintInvoice(placedOrderDetails)}
-                        className="w-full sm:w-auto py-3 px-4 min-h-[44px] rounded-xl border border-slate-300 hover:bg-slate-100 active:scale-95 text-slate-800 font-extrabold text-xs flex items-center justify-center gap-2 transition cursor-pointer touch-manipulation shadow-2xs"
+                        className={`w-full sm:w-auto py-3 px-4 min-h-[44px] rounded-xl border border-slate-300 hover:bg-slate-100 active:scale-95 text-slate-800 font-extrabold text-xs flex items-center justify-center gap-2 transition cursor-pointer touch-manipulation shadow-2xs ${isElegant ? "elegant-checkout__receipt-print" : ""}`}
                       >
                         <Printer className="w-4 h-4 text-sky-600" />
                         <span>طباعة الفاتورة</span>
@@ -1252,7 +1266,7 @@ export default function StorePreview({
                           setPlacedOrderDetails(null);
                           setStorePage("products");
                         }}
-                        className="w-full sm:w-auto py-3 px-4 rounded-xl bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition"
+                        className={`w-full sm:w-auto py-3 px-4 rounded-xl bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition ${isElegant ? "elegant-checkout__receipt-new" : ""}`}
                       >
                         <ShoppingBag className="w-4 h-4" />
                         <span>طلب جديد</span>

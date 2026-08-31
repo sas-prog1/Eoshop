@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/index.css";
 import StorePreview from "../../src/components/StorePreview";
@@ -68,6 +68,32 @@ function CheckoutPreview() {
   ]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [category, setCategory] = useState("الكل");
+
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has("receipt")) return undefined;
+
+    const fill = window.setTimeout(() => {
+      const setValue = (id: string, value: string) => {
+        const input = document.getElementById(id) as HTMLInputElement | null;
+        const setter = input ? Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set : undefined;
+        if (!input || !setter) return;
+        setter.call(input, value);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      };
+
+      setValue("checkout-full-name", "سارة عبدالله محمد");
+      setValue("checkout-phone", "770000111");
+      setValue("checkout-address", "شارع الزبيري، جوار المركز التجاري");
+
+      window.setTimeout(() => {
+        const submit = Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
+          .find((button) => button.textContent?.includes("معاينة إرسال الطلب"));
+        submit?.click();
+      }, 120);
+    }, 350);
+
+    return () => window.clearTimeout(fill);
+  }, []);
 
   return (
     <StorePreview
