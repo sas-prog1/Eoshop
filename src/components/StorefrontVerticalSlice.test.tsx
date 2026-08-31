@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import React, { useState } from "react";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OrderReceipt } from "../adapters/uiAdapters";
@@ -109,7 +109,7 @@ describe("public storefront functional vertical slice", () => {
     await user.type(screen.getByPlaceholderText(/عبدالله محمد/), "عميل T2");
     await user.type(screen.getByPlaceholderText(/0500000000/), "+967700000009");
     await user.type(screen.getByPlaceholderText(/اسم الشارع/), "عنوان محلي غير حساس");
-    await user.click(screen.getByRole("button", { name: "تأكيد الطلب بالسعر الخادمي" }));
+    fireEvent.click(screen.getByRole("button", { name: "تأكيد الطلب بالسعر الخادمي" }));
 
     await waitFor(() => expect(submitOrder).toHaveBeenCalledTimes(1), { timeout: 5_000 });
     expect(submitOrder.mock.calls[0][0]).toMatchObject({
