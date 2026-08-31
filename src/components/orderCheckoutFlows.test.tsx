@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OrderReceipt } from "../adapters/uiAdapters";
-import { ELEGANT_PRESET } from "../types";
+import { ELEGANT_PRESET, TECH_PRESET } from "../types";
 import StorePreview from "./StorePreview";
 
 const product = {
@@ -86,6 +86,22 @@ async function fillRequiredCheckoutFields(user: ReturnType<typeof userEvent.setu
 }
 
 describe("server-backed checkout interface", () => {
+  it("scopes the editorial checkout treatment to Elegant while Tech keeps the shared flow", () => {
+    const props = checkoutProps();
+    const { container, rerender } = render(<StorePreview {...props} mode="preview" />);
+
+    const elegantCheckout = container.querySelector('[data-elegant-checkout="true"]');
+    expect(elegantCheckout).toBeTruthy();
+    expect(elegantCheckout?.classList.contains("elegant-checkout")).toBe(true);
+    expect(elegantCheckout?.querySelector(".elegant-checkout__progress")).toBeTruthy();
+    expect(screen.getByText("الخطوة الأخيرة")).toBeTruthy();
+
+    rerender(<StorePreview {...props} config={{ ...TECH_PRESET, products: [product] }} mode="preview" />);
+    expect(container.querySelector('[data-elegant-checkout="true"]')).toBeNull();
+    expect(container.querySelector(".elegant-checkout__progress")).toBeNull();
+    expect(screen.queryByText("الخطوة الأخيرة")).toBeNull();
+  });
+
   it("submits bank transfer once and renders the server receipt instead of browser totals", async () => {
     let resolveOrder!: (value: OrderReceipt) => void;
     const pending = new Promise<OrderReceipt>((resolve) => { resolveOrder = resolve; });

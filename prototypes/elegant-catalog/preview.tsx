@@ -3,10 +3,12 @@ import { createRoot } from "react-dom/client";
 import "../../src/index.css";
 import StorefrontProductDetail from "../../src/components/StorefrontProductDetail";
 import {
+  ElegantCartDrawer,
   ElegantCatalog,
   ElegantEditorialHeader,
 } from "../../src/features/storefront/elegant-stories";
 import { ELEGANT_PRESET, type Product, type StoreConfig } from "../../src/types";
+import { addProductToCart, changeCartLineQuantity, type CartLine } from "../../src/workflows/orderState";
 
 const products: Product[] = [
   { id: "e1", status: "published", name: "حقيبة جلدية بتفاصيل هادئة", price: 420, description: "حقيبة يومية مصنوعة من جلد طبيعي، بمقصورة داخلية عملية وحزام قابل للتعديل.", category: "حقائب", imageKeyword: "bag", imageUrl: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=1000&q=86", manageStock: true, stockQuantity: 8, availableQuantity: 8 },
@@ -38,7 +40,13 @@ function Preview() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("الكل");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [cartCount, setCartCount] = useState(2);
+  const [cart, setCart] = useState<CartLine[]>([
+    { product: products[0], quantity: 1 },
+    { product: products[1], quantity: 1 },
+  ]);
+  const [drawerOpen, setDrawerOpen] = useState(() => new URLSearchParams(window.location.search).get("cart") === "1");
+  const cartCount = cart.reduce((total, line) => total + line.quantity, 0);
+  const subtotal = cart.reduce((total, line) => total + (line.product.price * line.quantity), 0);
   const categories = useMemo(() => ["الكل", ...new Set(products.map((product) => product.category))], []);
   const displayedProducts = useMemo(() => products.filter((product) => {
     const matchesCategory = category === "الكل" || product.category === category;
@@ -58,7 +66,7 @@ function Preview() {
         onOpenHome={() => window.location.assign("/prototypes/elegant-stories/")}
         onOpenProducts={() => setSelectedProduct(null)}
         onOpenAbout={() => undefined}
-        onOpenCart={() => undefined}
+        onOpenCart={() => setDrawerOpen(true)}
         onSelectCategory={(value) => { setCategory(value); setSelectedProduct(null); }}
       />
 
@@ -69,7 +77,7 @@ function Preview() {
           primaryColor={config.primaryColor}
           secondaryColor={config.secondaryColor}
           onBack={() => setSelectedProduct(null)}
-          onAdd={(_, quantity) => setCartCount((count) => count + quantity)}
+          onAdd={(product, quantity) => setCart((current) => addProductToCart(current, product, quantity).items)}
         />
       ) : (
         <ElegantCatalog
@@ -88,9 +96,32 @@ function Preview() {
           onSelectCategory={setCategory}
           onReset={() => { setCategory("الكل"); setSearch(""); }}
           onOpen={setSelectedProduct}
-          onAdd={() => setCartCount((count) => count + 1)}
+          onAdd={(product) => setCart((current) => addProductToCart(current, product).items)}
         />
       )}
+
+      {drawerOpen ? (
+        <ElegantCartDrawer
+          cart={cart}
+          totalItems={cartCount}
+          subtotal={subtotal}
+          currency={config.currency}
+          primaryColor={config.primaryColor}
+          primaryForeground="#FFFFFF"
+          pageBackground={config.bgColor || "#FBFAF7"}
+          cardBackground={config.cardBgColor || "#FFFFFF"}
+          borderColor={config.borderColor || "#E8E4DE"}
+          inkColor={config.secondaryColor}
+          mutedInkColor={config.textColor || "#57534E"}
+          prefersReducedMotion={false}
+          hasOrdered={false}
+          dialogRef={React.createRef<HTMLDivElement>()}
+          closeButtonRef={React.createRef<HTMLButtonElement>()}
+          onClose={() => setDrawerOpen(false)}
+          onQuantityChange={(productId, amount) => setCart((current) => changeCartLineQuantity(current, productId, amount).items)}
+          onCheckout={() => setDrawerOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

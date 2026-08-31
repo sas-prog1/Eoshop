@@ -18,7 +18,7 @@ import { usePlatformSettings } from "../adapters/PlatformSettingsContext";
 import { readableAccent, readableForeground } from "../utils/readableForeground";
 import { storefrontAvailableQuantity, storefrontCartLineLimit } from "../workflows/orderState";
 import type { StorefrontMarketingTargetType } from "../contracts/storefrontMarketingBlocks";
-import { ElegantCatalog, ElegantEditorialHeader } from "../features/storefront/elegant-stories";
+import { ElegantCartDrawer, ElegantCatalog, ElegantEditorialHeader } from "../features/storefront/elegant-stories";
 
 interface StorePreviewProps {
   config: StoreConfig;
@@ -866,11 +866,13 @@ export default function StorePreview({
               const disc = previewPercentageDiscount(cartTotal, matched.discountPercent);
               setCouponDiscount(disc);
               setCouponApplied(true);
-              setCouponMessage(`✓ تم تطبيق كود الخصم (${matched.code} - خصم ${matched.discountPercent}%) بنجاح! 🎉`);
+              setCouponMessage(isElegant
+                ? `تم تطبيق كود الخصم (${matched.code} — خصم ${matched.discountPercent}%).`
+                : `✓ تم تطبيق كود الخصم (${matched.code} - خصم ${matched.discountPercent}%) بنجاح! 🎉`);
             } else {
               setCouponDiscount(0);
               setCouponApplied(false);
-              setCouponMessage("❌ كود الخصم غير صحيح أو منتهي الصلاحية");
+              setCouponMessage(isElegant ? "كود الخصم غير صحيح أو منتهي الصلاحية." : "❌ كود الخصم غير صحيح أو منتهي الصلاحية");
             }
           };
 
@@ -989,7 +991,7 @@ export default function StorePreview({
               date: new Date().toLocaleString("ar-SA"),
               customer: { ...checkoutForm },
               paymentMethod: paymentMethod === "cod" 
-                ? `الدفع عند الاستلام / التوصيل 💵 ${codFee > 0 ? `(+${codFee} ${config.currency} رسوم COD)` : ''}`
+                ? `${isElegant ? "الدفع عند الاستلام / التوصيل" : "الدفع عند الاستلام / التوصيل 💵"} ${codFee > 0 ? `(+${codFee} ${config.currency} رسوم COD)` : ''}`
                 : `${currentWallet?.kind === "bank" ? "تحويل بنكي" : "محفظة إلكترونية"} (${currentWallet?.name})`,
               walletName: paymentMethod === "wallet" ? currentWallet?.name : null,
               walletAccount: paymentMethod === "wallet" ? currentWallet?.accountNumber : null,
@@ -1038,14 +1040,27 @@ export default function StorePreview({
           };
 
           return (
-            <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-8 animate-fadeIn pb-16 text-right">
-              <header className="space-y-2 text-center">
+            <div
+              className={`max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-8 animate-fadeIn pb-16 text-right ${isElegant ? "elegant-checkout" : ""}`}
+              data-elegant-checkout={isElegant ? "true" : undefined}
+              style={isElegant ? {
+                "--elegant-checkout-accent": primaryColor,
+                "--elegant-checkout-accent-foreground": primaryForeground,
+                "--elegant-checkout-ink": secondaryOnPage,
+                "--elegant-checkout-muted": effectiveTextColor,
+                "--elegant-checkout-surface": cardBgColor,
+                "--elegant-checkout-border": borderColor,
+                "--elegant-checkout-background": bgColor,
+              } as React.CSSProperties : undefined}
+            >
+              <header className={`space-y-2 text-center ${isElegant ? "elegant-checkout__intro" : ""}`}>
+                {isElegant ? <span>الخطوة الأخيرة</span> : null}
                 <h2 id="storefront-checkout-title" tabIndex={-1} className="text-2xl font-black text-slate-900">{config.checkoutTitle?.trim() || "إتمام الطلب"}</h2>
                 {config.checkoutSubtitle?.trim() && <p className="text-sm text-slate-600">{config.checkoutSubtitle}</p>}
                 {config.checkoutNotice?.trim() && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">{config.checkoutNotice}</p>}
               </header>
               {/* Checkout Progress Stepper Bar */}
-              <div className="flex items-center justify-between border-b pb-4 overflow-x-auto gap-2"
+              <div className={`flex items-center justify-between border-b pb-4 overflow-x-auto gap-2 ${isElegant ? "elegant-checkout__progress" : ""}`}
                    style={{ borderColor: isElegant ? "#f2eae1" : "#e2e8f0" }}>
                 <button
                   onClick={() => setStorePage("products")}
@@ -1105,7 +1120,7 @@ export default function StorePreview({
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 border-slate-200">
                       <div className="space-y-1">
                         <span className="text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-0.5 rounded-md font-mono">
-                          فاتورة طلب إلكترونية 🧾
+                          {isElegant ? "فاتورة طلب إلكترونية" : "فاتورة طلب إلكترونية 🧾"}
                         </span>
                         <h3 className="text-lg font-black text-slate-900">{config.storeName}</h3>
                         <p className="text-xs text-slate-500">{placedOrderDetails.date}</p>
@@ -1114,7 +1129,7 @@ export default function StorePreview({
                       <div className="text-right sm:text-left space-y-1">
                         <span className="text-xs text-slate-500 block">حالة الطلب:</span>
                         <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                          قيد التجهيز والتوصيل ⏳
+                          {isElegant ? "قيد التجهيز والتوصيل" : "قيد التجهيز والتوصيل ⏳"}
                         </span>
                       </div>
                     </div>
@@ -1261,24 +1276,24 @@ export default function StorePreview({
                       onClick={() => setStorePage("products")}
                       className="py-3 px-5 rounded-xl text-white font-bold text-xs bg-slate-900 hover:bg-slate-800 shadow-md transition inline-flex items-center gap-2 w-full sm:w-auto justify-center cursor-pointer"
                     >
-                      <span>استعراض معرض المنتجات 🛍️</span>
+                      <span>{isElegant ? "استعراض معرض المنتجات" : "استعراض معرض المنتجات 🛍️"}</span>
                     </button>
 
                   </div>
                 </div>
               ) : (
                 /* ACTIVE CHECKOUT FORM & PAYMENT SELECTION */
-                <form onSubmit={handlePlaceOrderSubmit} noValidate className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start" aria-describedby={formValidationErr ? "checkout-error" : undefined}>
+                <form onSubmit={handlePlaceOrderSubmit} noValidate className={`grid grid-cols-1 lg:grid-cols-12 gap-8 items-start ${isElegant ? "elegant-checkout__layout" : ""}`} aria-describedby={formValidationErr ? "checkout-error" : undefined}>
                   
                   {/* RIGHT / MAIN COLUMN: Form & Payment (7 cols) */}
-                  <div className="lg:col-span-7 space-y-6">
+                  <div className={`lg:col-span-7 space-y-6 ${isElegant ? "elegant-checkout__main" : ""}`}>
                     
                     {/* SECTION 1: Customer & Delivery Info */}
-                    <div className={`p-5 md:p-6 rounded-3xl border space-y-4 shadow-sm ${
+                    <div className={`p-5 md:p-6 rounded-3xl border space-y-4 shadow-sm ${isElegant ? "elegant-checkout__panel" : ""} ${
                       !isElegant ? "bg-white border-slate-200" : "bg-white border-amber-200/80"
                     }`}>
-                      <div className="flex items-center gap-2 border-b pb-3" style={{ borderColor: isElegant ? "#f2eae1" : "#e2e8f0" }}>
-                        <div className="w-8 h-8 rounded-xl bg-sky-500 text-white font-bold flex items-center justify-center text-xs shadow-2xs">1</div>
+                      <div className={`flex items-center gap-2 border-b pb-3 ${isElegant ? "elegant-checkout__section-heading" : ""}`} style={{ borderColor: isElegant ? borderColor : "#e2e8f0" }}>
+                        <div className={`w-8 h-8 rounded-xl bg-sky-500 text-white font-bold flex items-center justify-center text-xs shadow-2xs ${isElegant ? "elegant-checkout__step" : ""}`}>1</div>
                         <div>
                           <h3 className="font-black text-sm text-slate-900">بيانات المشتري وعنوان التوصيل</h3>
                           <p className="text-[11px] text-slate-500">أدخل معلومات التواصل الدقيقة لتسهيل وصول الشحنة لك بسرعة.</p>
@@ -1287,7 +1302,7 @@ export default function StorePreview({
 
                       {formValidationErr && (
                         <div ref={checkoutErrorRef} id="checkout-error" role="alert" tabIndex={-1} className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2 animate-fadeIn outline-none">
-                          <span>⚠️</span>
+                          <span>{isElegant ? "!" : "⚠️"}</span>
                           <span>{formValidationErr}</span>
                         </div>
                       )}
@@ -1427,11 +1442,11 @@ export default function StorePreview({
                     </div>
 
                     {/* SECTION 2: Payment Method Selection */}
-                    <div className={`p-5 md:p-6 rounded-3xl border space-y-4 shadow-sm ${
+                    <div className={`p-5 md:p-6 rounded-3xl border space-y-4 shadow-sm ${isElegant ? "elegant-checkout__panel" : ""} ${
                       !isElegant ? "bg-white border-slate-200" : "bg-white border-amber-200/80"
                     }`}>
-                      <div className="flex items-center gap-2 border-b pb-3" style={{ borderColor: isElegant ? "#f2eae1" : "#e2e8f0" }}>
-                        <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center text-xs shadow-2xs">2</div>
+                      <div className={`flex items-center gap-2 border-b pb-3 ${isElegant ? "elegant-checkout__section-heading" : ""}`} style={{ borderColor: isElegant ? borderColor : "#e2e8f0" }}>
+                        <div className={`w-8 h-8 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center text-xs shadow-2xs ${isElegant ? "elegant-checkout__step" : ""}`}>2</div>
                         <div>
                           <h3 id="checkout-payment-heading" className="font-black text-sm text-slate-900">طريقة الدفع المناسبة</h3>
                           <p className="text-[11px] text-slate-500">اختر إما الدفع نقداً عند التوصيل أو عبر إحدى المحافظ الإلكترونية المتاحة.</p>
@@ -1450,7 +1465,7 @@ export default function StorePreview({
                           tabIndex={effectivePaymentMethod === "cod" ? 0 : -1}
                           onKeyDown={handleRadioArrowNavigation}
                           onClick={() => setPaymentMethod("cod")}
-                          className={`p-4 rounded-2xl border-2 cursor-pointer transition relative space-y-2 text-right ${
+                          className={`p-4 rounded-2xl border-2 cursor-pointer transition relative space-y-2 text-right ${isElegant ? "elegant-checkout__payment-option" : ""} ${
                             paymentMethod === "cod"
                               ? "border-sky-500 bg-sky-50/50 ring-2 ring-sky-400/30"
                               : "border-slate-200 bg-white hover:border-slate-300"
@@ -1479,7 +1494,7 @@ export default function StorePreview({
                           tabIndex={effectivePaymentMethod === "wallet" ? 0 : -1}
                           onKeyDown={handleRadioArrowNavigation}
                           onClick={() => setPaymentMethod("wallet")}
-                          className={`p-4 rounded-2xl border-2 cursor-pointer transition relative space-y-2 text-right ${
+                          className={`p-4 rounded-2xl border-2 cursor-pointer transition relative space-y-2 text-right ${isElegant ? "elegant-checkout__payment-option" : ""} ${
                             paymentMethod === "wallet"
                               ? "border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-400/30"
                               : "border-slate-200 bg-white hover:border-slate-300"
@@ -1506,7 +1521,7 @@ export default function StorePreview({
 
                       {/* E-WALLET SELECTION SUB-PANEL */}
                       {paymentMethod === "wallet" && transferAvailable && (
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4 animate-fadeIn">
+                        <div className={`p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4 animate-fadeIn ${isElegant ? "elegant-checkout__transfer" : ""}`}>
                           <div className="space-y-1">
                             <h4 className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
                               <Wallet className="w-4 h-4 text-emerald-600" />
@@ -1528,7 +1543,7 @@ export default function StorePreview({
                                   onKeyDown={handleRadioArrowNavigation}
                                   key={w.selectionKey}
                                   onClick={() => setSelectedWallet(w.selectionKey)}
-                                  className={`p-3 rounded-xl border cursor-pointer transition flex items-center justify-between gap-2 text-right ${
+                                  className={`p-3 rounded-xl border cursor-pointer transition flex items-center justify-between gap-2 text-right ${isElegant ? "elegant-checkout__wallet" : ""} ${
                                     isSelected 
                                       ? "border-emerald-600 bg-white shadow-xs ring-1 ring-emerald-500" 
                                       : "border-slate-200 bg-white/80 hover:bg-white"
@@ -1604,8 +1619,8 @@ export default function StorePreview({
                   </div>
 
                   {/* LEFT / SIDEBAR COLUMN: Order Summary & Confirmation (5 cols) */}
-                  <div className="lg:col-span-5 space-y-4">
-                    <div className={`p-5 md:p-6 rounded-3xl border space-y-5 sticky top-20 shadow-md ${
+                  <div className={`lg:col-span-5 space-y-4 ${isElegant ? "elegant-checkout__aside" : ""}`}>
+                    <div className={`p-5 md:p-6 rounded-3xl border space-y-5 sticky top-20 shadow-md ${isElegant ? "elegant-checkout__summary-card" : ""} ${
                       !isElegant ? "bg-white border-slate-200" : "bg-white border-amber-200/80"
                     }`}>
                       <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: isElegant ? "#f2eae1" : "#e2e8f0" }}>
@@ -1717,7 +1732,7 @@ export default function StorePreview({
                         type="submit"
                         disabled={orderSubmitting || (!codAvailable && !transferAvailable)}
                         aria-describedby={formValidationErr ? "checkout-error" : undefined}
-                        className={`w-full py-4 rounded-2xl text-white font-black text-sm shadow-lg transition flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] ${
+                        className={`w-full py-4 rounded-2xl text-white font-black text-sm shadow-lg transition flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] ${isElegant ? "elegant-checkout__submit" : ""} ${
                           !isElegant ? "bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 font-mono shadow-sky-600/20" : "hover:opacity-90"
                         }`}
                         style={{ backgroundColor: isElegant ? primaryColor : undefined, color: isElegant ? primaryForeground : undefined }}
@@ -1754,6 +1769,35 @@ export default function StorePreview({
       {/* ----------------- SHOPPING CART DRAWER ----------------- */}
       <AnimatePresence onExitComplete={handleCartExitComplete}>
         {isCartDrawerOpen && (
+          isElegant ? (
+            <ElegantCartDrawer
+              cart={cart}
+              totalItems={totalItems}
+              subtotal={cartTotal}
+              currency={config.currency || "ر.س"}
+              primaryColor={primaryColor}
+              primaryForeground={primaryForeground}
+              pageBackground={bgColor}
+              cardBackground={cardBgColor}
+              borderColor={borderColor}
+              inkColor={secondaryOnPage}
+              mutedInkColor={effectiveTextColor}
+              prefersReducedMotion={prefersReducedMotion}
+              hasOrdered={hasOrdered}
+              dialogRef={cartDialogRef}
+              closeButtonRef={cartCloseButtonRef}
+              onClose={() => closeCart()}
+              onQuantityChange={updateQuantity}
+              onCheckout={() => {
+                setStorePage("checkout");
+                closeCart("checkout");
+                const container = document.getElementById("store-preview-scroll-container");
+                if (container && typeof container.scrollTo === "function") {
+                  container.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
+                }
+              }}
+            />
+          ) : (
           <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/60 backdrop-blur-xs" data-storefront-cart-overlay>
             {/* Click outside to close */}
             <button type="button" className="absolute inset-0 cursor-default" onClick={() => closeCart()} aria-label="إغلاق سلة التسوق" tabIndex={-1} />
@@ -1918,6 +1962,7 @@ export default function StorePreview({
               )}
             </motion.div>
           </div>
+          )
         )}
       </AnimatePresence>
       {/* Mobile Sticky Bottom Dock Navigation Bar */}

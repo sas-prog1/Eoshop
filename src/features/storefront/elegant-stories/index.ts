@@ -7,5 +7,6 @@ export { default as ElegantDiscoveryRail } from "./ElegantDiscoveryRail";
 export { default as ElegantCatalog } from "./ElegantCatalog";
 export { default as ElegantCatalogProductCard } from "./ElegantCatalogProductCard";
 export { default as ElegantProductDetail } from "./ElegantProductDetail";
+export { default as ElegantCartDrawer } from "./ElegantCartDrawer";
 export * from "./model";
 export * from "./storefrontModel";
