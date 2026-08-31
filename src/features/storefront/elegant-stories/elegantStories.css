@@ -12,25 +12,30 @@
 }
 
 .elegant-editorial-intro {
+  display: grid;
+  justify-items: center;
   margin-inline: auto;
-  max-width: 58rem;
-  padding: clamp(1.5rem, 4vw, 4rem) 1rem clamp(1.25rem, 3vw, 2.5rem);
+  max-width: 50rem;
+  padding: clamp(1.25rem, 3vw, 2.75rem) 1rem clamp(1.5rem, 3vw, 2.5rem);
+  row-gap: 0.5rem;
   text-align: center;
 }
 
 .elegant-editorial-intro > p {
   color: var(--elegant-muted-ink);
   font-size: clamp(0.9rem, 1.4vw, 1.25rem);
-  letter-spacing: 0.02em;
+  line-height: 1.6;
+  margin: 0;
 }
 
 .elegant-editorial-intro > h1 {
   font-family: "Amiri", "Cairo", serif;
-  font-size: clamp(3rem, 7.5vw, 7.5rem);
+  font-size: clamp(3.5rem, 6vw, 6rem);
   font-weight: 400;
-  letter-spacing: -0.045em;
-  line-height: 0.98;
-  margin-block: 0.35rem 0.75rem;
+  letter-spacing: 0;
+  line-height: 1.22;
+  margin: 0;
+  max-width: 47.5rem;
   text-wrap: balance;
 }
 
@@ -38,7 +43,11 @@
   color: var(--elegant-muted-ink);
   display: block;
   font-size: clamp(0.9rem, 1.25vw, 1.1rem);
-  line-height: 1.9;
+  line-height: 1.75;
+  margin: 0;
+  margin-block-start: 0.25rem;
+  max-width: 40rem;
+  text-wrap: balance;
 }
 
 .elegant-editorial-intro > button,
@@ -47,7 +56,7 @@
   border-radius: 999px;
   color: var(--elegant-surface);
   font-weight: 800;
-  margin-block-start: 1.25rem;
+  margin-block-start: 0.5rem;
   min-height: 2.75rem;
   padding: 0.65rem 1.25rem;
 }
@@ -489,16 +498,17 @@
   }
 
   .elegant-editorial-intro {
-    padding-block: 0.1rem 0.45rem;
+    padding-block: 0.35rem 0.9rem;
+    row-gap: 0.5rem;
   }
 
   .elegant-editorial-intro > h1 {
-    font-size: clamp(3rem, 4.8vw, 4.8rem);
-    margin-block: 0.05rem 0.2rem;
+    font-size: clamp(3.5rem, 4.4vw, 5.25rem);
+    line-height: 1.18;
   }
 
   .elegant-editorial-intro > span {
-    line-height: 1.4;
+    line-height: 1.65;
   }
 
   .elegant-story-stage {
@@ -591,11 +601,17 @@
   }
 
   .elegant-editorial-intro {
-    padding-block: 0.9rem 0.7rem;
+    padding-block: 0.75rem 0.9rem;
+    row-gap: 0.4rem;
   }
 
   .elegant-editorial-intro > h1 {
-    font-size: clamp(2.8rem, 16vw, 4.8rem);
+    font-size: clamp(2.75rem, 14vw, 4rem);
+    line-height: 1.22;
+  }
+
+  .elegant-editorial-intro > span {
+    line-height: 1.7;
   }
 
   .elegant-story-stage {
