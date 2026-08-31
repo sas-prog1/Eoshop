@@ -31,7 +31,7 @@ describe("StorefrontHome", () => {
       shippingFee: undefined,
       freeShippingThreshold: undefined,
     };
-    const view = render(<StorefrontHome config={config} isElegant primaryColor="#112233" secondaryColor="#334455" onOpenProducts={vi.fn()} onOpenAbout={vi.fn()} onSelectCategory={onSelectCategory} onOpenProduct={vi.fn()} onAddProduct={vi.fn()} />);
+    const view = render(<StorefrontHome config={config} isElegant primaryColor="#112233" secondaryColor="#334455" onOpenProducts={vi.fn()} onOpenAbout={vi.fn()} onSelectCategory={onSelectCategory} onOpenProduct={vi.fn()} onAddProduct={vi.fn()} onOpenMarketingTarget={vi.fn()} />);
 
     expect(Array.from(view.container.querySelectorAll("[data-storefront-section]")).map((node) => node.getAttribute("data-storefront-section"))).toEqual([
       "featured_products", "categories", "trust", "about",
@@ -43,7 +43,7 @@ describe("StorefrontHome", () => {
   });
 
   it("shows truthful empty states without inventing catalog or service claims", () => {
-    render(<StorefrontHome config={{ ...ELEGANT_PRESET, products: [], phone: "", whatsapp: "", email: "", workingHours: "", enableCashOnDelivery: false, enableBankTransfer: false, enableEWallets: false, shippingFee: undefined, freeShippingThreshold: undefined }} isElegant={false} primaryColor="#112233" secondaryColor="#334455" onOpenProducts={vi.fn()} onOpenAbout={vi.fn()} onSelectCategory={vi.fn()} onOpenProduct={vi.fn()} onAddProduct={vi.fn()} />);
+    render(<StorefrontHome config={{ ...ELEGANT_PRESET, products: [], phone: "", whatsapp: "", email: "", workingHours: "", enableCashOnDelivery: false, enableBankTransfer: false, enableEWallets: false, shippingFee: undefined, freeShippingThreshold: undefined }} isElegant={false} primaryColor="#112233" secondaryColor="#334455" onOpenProducts={vi.fn()} onOpenAbout={vi.fn()} onSelectCategory={vi.fn()} onOpenProduct={vi.fn()} onAddProduct={vi.fn()} onOpenMarketingTarget={vi.fn()} />);
     expect(screen.getByText("لم يضف المتجر معلومات الخدمة بعد")).toBeTruthy();
     expect(screen.getByText("لا توجد تصنيفات منشورة بعد.")).toBeTruthy();
     expect(screen.getByText("لم ينشر المتجر منتجات بعد.")).toBeTruthy();
@@ -70,6 +70,7 @@ describe("StorefrontHome", () => {
       onSelectCategory: vi.fn(),
       onOpenProduct: vi.fn(),
       onAddProduct: vi.fn(),
+      onOpenMarketingTarget: vi.fn(),
     };
     const view = render(<StorefrontHome {...props} />);
 
@@ -85,5 +86,61 @@ describe("StorefrontHome", () => {
     expect(image?.getAttribute("fetchpriority")).toBe("high");
     expect(screen.getByRole("heading", { name: "Readable hero" }).style.color).toBe("rgb(255, 255, 255)");
     expect(screen.getByRole("heading", { name: "Readable hero" }).style.textShadow).not.toBe("");
+  });
+
+  it("renders server-owned editorial stories and image-only editor picks for Elegant", () => {
+    const onOpenMarketingTarget = vi.fn();
+    render(
+      <StorefrontHome
+        config={{
+          ...ELEGANT_PRESET,
+          marketingBlocks: [
+            {
+              id: "00000000-0000-4000-8000-000000000001",
+              placement: "editorial_story",
+              position: 1,
+              enabled: true,
+              contentType: "category",
+              title: "إشراقة طبيعية",
+              ctaLabel: "تسوق القصة",
+              imageUrl: "/api/store-assets/tenant/00000000-0000-4000-8000-000000000011",
+              altText: "صورة قصة موسمية",
+              targetType: "category",
+              targetValue: "العطور",
+              disclosure: "none",
+            },
+            {
+              id: "00000000-0000-4000-8000-000000000002",
+              placement: "discovery",
+              position: 1,
+              enabled: true,
+              contentType: "product",
+              title: "مختارات العطور",
+              ctaLabel: "افتح المختار",
+              imageUrl: "/api/store-assets/tenant/00000000-0000-4000-8000-000000000012",
+              altText: "صورة مختارات العطور",
+              targetType: "products",
+              disclosure: "none",
+            },
+          ],
+        }}
+        isElegant
+        primaryColor="#7a2e2e"
+        secondaryColor="#171717"
+        onOpenProducts={vi.fn()}
+        onOpenAbout={vi.fn()}
+        onSelectCategory={vi.fn()}
+        onOpenProduct={vi.fn()}
+        onAddProduct={vi.fn()}
+        onOpenMarketingTarget={onOpenMarketingTarget}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "تسوق القصة" }));
+    expect(onOpenMarketingTarget).toHaveBeenCalledWith("category", "العطور");
+    expect(screen.getByRole("heading", { name: "مختارات المحرر" })).toBeTruthy();
+    const discovery = document.querySelector("[data-elegant-discovery]");
+    expect(discovery?.textContent).not.toMatch(/YER|ر\.س/);
+    expect(discovery?.querySelector('button[aria-label*="إضافة"]')).toBeNull();
   });
 });

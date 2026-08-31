@@ -1,3 +1,5 @@
+import type { StorefrontMarketingTargetType } from "../../../contracts/storefrontMarketingBlocks";
+
 export type ElegantStoryDisclosure = "none" | "ad" | "sponsored";
 
 export interface ElegantStoryViewModel {
@@ -16,6 +18,8 @@ export interface ElegantStoryViewModel {
   focalPointY?: number;
   disclosure?: ElegantStoryDisclosure;
   sponsorName?: string;
+  targetType: StorefrontMarketingTargetType;
+  targetValue?: string;
   visible?: boolean;
 }
 
@@ -30,6 +34,8 @@ export interface ElegantDiscoveryViewModel {
   sponsorName?: string;
   focalPointX?: number;
   focalPointY?: number;
+  targetType: StorefrontMarketingTargetType;
+  targetValue?: string;
 }
 
 export interface ElegantEditorialIntroViewModel {

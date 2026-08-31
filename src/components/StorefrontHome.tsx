@@ -1,11 +1,13 @@
 import React from "react";
 import { Building2, Clock, CreditCard, Grid3X3, Mail, MessageSquare, Phone, ShoppingBag, Truck } from "lucide-react";
 import type { Product, StoreConfig, StorefrontSectionId } from "../types";
+import type { StorefrontMarketingTargetType } from "../contracts/storefrontMarketingBlocks";
 import { storefrontSectionsOrDefault } from "../contracts/storefrontSections";
 import { canonicalContactTarget } from "../contracts/checkoutPolicy";
 import { readableAccent } from "../utils/readableForeground";
 import StorefrontHero from "./StorefrontHero";
 import StorefrontProductCard from "./StorefrontProductCard";
+import { ElegantStoriesHome, elegantStoriesHomeModel } from "../features/storefront/elegant-stories";
 
 interface Props {
   config: StoreConfig;
@@ -17,6 +19,7 @@ interface Props {
   onSelectCategory: (category: string) => void;
   onOpenProduct: (product: Product) => void;
   onAddProduct: (product: Product) => void;
+  onOpenMarketingTarget: (targetType: StorefrontMarketingTargetType, targetValue?: string) => void;
 }
 
 interface TrustFact {
@@ -35,6 +38,7 @@ export default function StorefrontHome({
   onSelectCategory,
   onOpenProduct,
   onAddProduct,
+  onOpenMarketingTarget,
 }: Props) {
   const pageBackground = config.bgColor || (isElegant ? "#FDFBF7" : "#F8FAFC");
   const cardBackground = config.cardBgColor || "#FFFFFF";
@@ -73,9 +77,32 @@ export default function StorefrontHome({
         ? [{ key: "shipping", label: `رسوم الشحن ${config.shippingFee} ${config.currency}`, icon: Truck }]
         : []),
   ];
+  const elegantModel = elegantStoriesHomeModel(config);
+  const hasElegantEditorial = isElegant && (elegantModel.stories.length > 0 || elegantModel.discoveryItems.length > 0);
+  const legacyCategories = (
+    <section className="space-y-4">
+      <div><h2 className="text-xl font-black" style={{ color: secondaryPageAccent }}>التصنيفات</h2><p className="mt-1 text-xs" style={{ color: pageBodyColor }}>التصنيفات المستخرجة من المنتجات المنشورة.</p></div>
+      {categories.length > 0 ? <div className="flex flex-wrap gap-2">{categories.map((category) => <button key={category} type="button" onClick={() => onSelectCategory(category)} className="min-h-11 rounded-full border px-4 py-2 text-xs font-black transition hover:-translate-y-0.5 motion-reduce:transform-none" style={{ backgroundColor: cardBackground, borderColor, color: secondaryCardAccent }}>{category}</button>)}</div> : <div className="rounded-2xl border border-dashed p-6 text-center text-sm font-bold" style={{ backgroundColor: cardBackground, borderColor, color: cardBodyColor }}>لا توجد تصنيفات منشورة بعد.</div>}
+    </section>
+  );
 
   const sections: Record<StorefrontSectionId, React.ReactNode> = {
-    hero: <StorefrontHero config={config} isElegant={isElegant} primaryColor={primaryColor} secondaryColor={secondaryColor} onOpenProducts={onOpenProducts} />,
+    hero: hasElegantEditorial ? (
+      <ElegantStoriesHome
+        model={elegantModel}
+        tokens={{
+          background: pageBackground,
+          surface: cardBackground,
+          ink: secondaryPageAccent,
+          mutedInk: pageBodyColor,
+          border: borderColor,
+          accent: primaryPageAccent,
+        }}
+        onOpenStory={(story) => onOpenMarketingTarget(story.targetType, story.targetValue)}
+        onOpenDiscovery={(item) => onOpenMarketingTarget(item.targetType, item.targetValue)}
+        onOpenDiscoveryAll={onOpenProducts}
+      />
+    ) : <StorefrontHero config={config} isElegant={isElegant} primaryColor={primaryColor} secondaryColor={secondaryColor} onOpenProducts={onOpenProducts} />,
     trust: (
       <section className="rounded-3xl border p-5 shadow-sm" style={{ backgroundColor: cardBackground, borderColor }}>
         <div className="mb-4"><h2 className="text-lg font-black" style={{ color: secondaryCardAccent }}>معلومات المتجر والخدمة</h2><p className="mt-1 text-xs" style={{ color: cardBodyColor }}>بيانات منشورة من إعدادات المتجر الحالية.</p></div>
@@ -86,12 +113,7 @@ export default function StorefrontHome({
         ) : <div className="rounded-2xl border border-dashed p-6 text-center text-sm font-bold" style={{ borderColor, color: cardBodyColor }}>لم يضف المتجر معلومات الخدمة بعد</div>}
       </section>
     ),
-    categories: (
-      <section className="space-y-4">
-        <div><h2 className="text-xl font-black" style={{ color: secondaryPageAccent }}>التصنيفات</h2><p className="mt-1 text-xs" style={{ color: pageBodyColor }}>التصنيفات المستخرجة من المنتجات المنشورة.</p></div>
-        {categories.length > 0 ? <div className="flex flex-wrap gap-2">{categories.map((category) => <button key={category} type="button" onClick={() => onSelectCategory(category)} className="min-h-11 rounded-full border px-4 py-2 text-xs font-black transition hover:-translate-y-0.5 motion-reduce:transform-none" style={{ backgroundColor: cardBackground, borderColor, color: secondaryCardAccent }}>{category}</button>)}</div> : <div className="rounded-2xl border border-dashed p-6 text-center text-sm font-bold" style={{ backgroundColor: cardBackground, borderColor, color: cardBodyColor }}>لا توجد تصنيفات منشورة بعد.</div>}
-      </section>
-    ),
+    categories: hasElegantEditorial ? null : legacyCategories,
     featured_products: (
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-3"><div><h2 className="text-xl font-black" style={{ color: secondaryPageAccent }}>المنتجات المنشورة</h2><p className="mt-1 text-xs" style={{ color: pageBodyColor }}>منتجات من كتالوج المتجر الحالي.</p></div>{products.length > 0 && <button type="button" onClick={onOpenProducts} className="text-xs font-black" style={{ color: primaryPageAccent }}>عرض الكل</button>}</div>
@@ -111,9 +133,11 @@ export default function StorefrontHome({
   };
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-10 px-3 py-6 animate-fadeIn md:px-6 md:py-10">
+    <div className={`mx-auto flex w-full flex-col animate-fadeIn ${hasElegantEditorial ? "max-w-none gap-8 py-0" : "max-w-7xl gap-10 px-3 py-6 md:px-6 md:py-10"}`}>
       {storefrontSectionsOrDefault(config.homeSections).filter((section) => section.visible).map((section) => (
-        <div key={section.id} data-storefront-section={section.id}>{sections[section.id]}</div>
+        sections[section.id] ? (
+          <div key={section.id} data-storefront-section={section.id} className={hasElegantEditorial && section.id !== "hero" ? "mx-auto w-full max-w-7xl px-3 md:px-6" : undefined}>{sections[section.id]}</div>
+        ) : null
       ))}
     </div>
   );

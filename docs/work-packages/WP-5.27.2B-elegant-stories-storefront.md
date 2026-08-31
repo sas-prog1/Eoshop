@@ -4,11 +4,11 @@
 |---|---|
 | المرحلة | Phase 5 — Launch storefront differentiation |
 | الحزمة | WP 5.27.2B |
-| الحالة | T0 + T0P complete — طبقة عرض معزولة فقط؛ الربط المشترك ينتظر عقد WP 5.27.2A/T1 |
-| الأساس المحلي | `main` المدمج عند `a09ac954e60ba1277a7128975f266726a85a6675` |
+| الحالة | T1–T4 مكتملة وظيفيًا؛ T5 قيد إغلاق التوثيق وPR، ولا Merge قبل مراجعة المالك |
+| الأساس المحلي | عقد WP 5.27.2A المدمج عند `b7ed06b4a5f67871216696ae1d1342192dd11370` |
 | الفرع | `codex/wp5-27-2b-elegant-stories` |
 | القالب | `themeStyle=elegant`؛ لا يضاف قالب ثالث |
-| الاعتماديات | WP 5.15، WP 5.21، WP 5.27.1، ثم عقد WP 5.27.2A/T1 المعتمد |
+| الاعتماديات | WP 5.15، WP 5.21، WP 5.27.1، وعقد WP 5.27.2A/T1 المدمج |
 | القرار | [ADR 0040](../decisions/ADR-0040-elegant-editorial-stories-and-discovery.md) |
 | المرجع البصري | [Elegant Stories approved reference](WP-5.27.2B-elegant-stories-reference.png) |
 
@@ -104,34 +104,14 @@
 | السلة والطلب الخادمي | مكتمل في WP 5.27.1 | لا fork ولا fields تسويقية داخل الطلب |
 | CI gates | أربع بوابات | مطلوبة على الرأس النهائي نفسه |
 
-## 7. التبعية مع عمل المطور الأول
+## 7. نتيجة الالتقاء مع WP 5.27.2A
 
-### ما ننتظره من WP 5.27.2A/T1
-
-- الاسم والشكل النهائيان لـ`StorefrontMarketingBlock`.
-- قواعد `marketingBlocks` وplacement allowlist.
-- managed desktop/mobile images وfocal point وoverlay.
-- typed targets: products/category/product/external.
-- disclosure/sponsor/schedule.
-- mixed-version omission protection.
-- nested asset reference tracking والـquota.
-- أسماء الأخطاء ودوال mapper/validator النهائية.
-
-### ما لا يُسمح بلمسه قبل المزامنة
-
-- `src/types.ts` وworkspace mappers.
-- Laravel request/workspace contract/service.
-- `StoreAssetPath` و`StoreAssetService`.
-- `MerchantStoreProfileEditor`.
-- dispatchers أو ملفات Home المشتركة التي ينشئها المطور الأول.
-
-### بروتوكول الالتقاء
-
-1. يستلم هذا الفرع تقرير WP 5.27.2A/T1 مع Base/Head SHA والحقول الفعلية.
-2. يُعاد base/rebase فرع Elegant على commit العقد المعتمد فقط.
-3. تقارن الأسماء والحدود والأخطاء مع هذه الوثيقة وADR 0040.
-4. يحدّث القرار أولًا عند أي اختلاف؛ لا يكتب عقد موازٍ.
-5. يبدأ T1 في هذه الحزمة بعد أن تصبح الشجرة نظيفة وتنجح اختبارات العقد المشتركة.
+- دُمج عقد الحملات المستعاد في `main` عند `b7ed06b4a5f67871216696ae1d1342192dd11370`، ثم بُني Elegant فوقه دون عقد أو endpoint موازٍ.
+- احتُفظ بجميع حقول T1 وأكواد أخطائه وحماية العملاء القدماء وملكية الأصول والـquota كما هي.
+- التمديد الوحيد هو placement باسم `editorial_story` بحد خمس قصص؛ يصبح الحد الإجمالي 22 block بدل 17.
+- يعيد Elegant استخدام `discovery` بحد عشرة عناصر لمختارات المحرر؛ لا يوجد `featuredProductIds` ولا وضع تلقائي منفصل.
+- قالب Tech يتجاهل `editorial_story` في العرض، بينما يحتفظ به الحفظ revisioned ولا يحذفه عند تبديل القالب.
+- لا Migration ولا جدول ولا endpoint ولا dependency جديدة.
 
 ## 8. التمديد الوحيد لعقد الحملات
 
@@ -246,11 +226,11 @@ StorePreview (shared route/cart/checkout/order authority)
 
 ### مختارات المحرر
 
-1. تبديل واضح بين تلقائي ويدوي.
-2. picker قابل للبحث من الكتالوج الفعلي.
-3. حد 12 مع ترتيب keyboard-accessible وحذف.
-4. إظهار draft/archived/out-of-stock كحالة إدارية لا كمنتج عام صالح.
-5. preview الكمبيوتر والجوال من renderer نفسه.
+1. حتى عشرة blocks يدوية مستقلة من placement المشترك `discovery`؛ لا وضع تلقائي في هذا الإصدار.
+2. لكل مربع صورة كمبيوتر وصورة جوال اختيارية، alt، نص، CTA وهدف typed إلى المنتجات أو تصنيف أو منتج أو حملة خارجية آمنة.
+3. إضافة ونسخ وحذف وتعطيل وترتيب، مع قائمة أهداف المنتج والتصنيف من الكتالوج المنشور.
+4. لا سعر أو مخزون أو زر سلة داخل المربع، حتى عندما يكون الهدف منتجًا.
+5. المعاينة العامة تستخدم renderer نفسه، وتبديل القالب يحتفظ بالمحتوى المخفي.
 
 ### الحفظ والحماية
 
@@ -331,7 +311,7 @@ StorePreview (shared route/cart/checkout/order authority)
 - أدلة المراجعة المحلية بعد التصحيح: `reports/wp5272b-elegant-stories-discovery-first-fold-1920.png` و`reports/wp5272b-elegant-stories-discovery-first-fold-1366.png`؛ وتثبتان ظهور القصص وصف الصور التحريرية معًا في الشاشة الأولى دون أسعار أو أزرار سلة.
 - **نقطة توقف:** يمنع الآن أي Adapter أو integration أو تعديل ملف مشترك حتى اعتماد عقد WP 5.27.2A/T1.
 
-### T1 — مزامنة العقد وتثبيت delta
+### T1 — مزامنة العقد وتثبيت delta — مكتمل
 
 - وصل تقرير T1 من فرع Tech عند Head `1570750e250c75bc3959cb52604dc4542544176d`، وتمت مراجعة ملفات PHP المرفقة. يطابق العقد أساس هذه الحزمة، بما في ذلك managed assets والعزل والجدولة والإفصاح والأهداف الخادمية والمزج مع العملاء القدماء.
 - الاعتماد التشغيلي مشروط بإتاحة Head نفسه على فرع المستودع الفرعي؛ لا rebase على ملف مرفق أو SHA محلي غير متاح عن بعد.
@@ -342,7 +322,7 @@ StorePreview (shared route/cart/checkout/order authority)
 - اختبارات contract/backend/mixed-version/tenant isolation المركزة.
 - **نقطة توقف:** تقرير contract diff، الملفات، الاختبارات وMigration المتوقع «لا يوجد». لا يبدأ UI قبل الاعتماد.
 
-### T2 — الصفحة الرئيسية Elegant Stories
+### T2 — الصفحة الرئيسية Elegant Stories — مكتمل
 
 - تنفيذ Header/Intro/StoryStage/StoryCard/DiscoveryRail والمكونات في القسم 10.
 - fallbacks الصادقة وhomeSections والروابط الفعلية.
@@ -350,14 +330,14 @@ StorePreview (shared route/cart/checkout/order authority)
 - Characterization لقالب Tech بعد rebase.
 - **نقطة توقف:** صور 1440px و390px إن توفرت أداة مناسبة، نتائج component tests، وتقرير عدم تغير Tech.
 
-### T3 — محرر القصص والمختارات
+### T3 — محرر القصص والمختارات — مكتمل
 
 - توسيع تبويب الحملات المشترك بحسب القسم 12.
 - managed uploads، targets، order، schedule، disclosure وpreview؛ لا product picker خاص بهذا الصف.
 - save/reload/conflict/dirty/session/store-switch acceptance.
 - **نقطة توقف:** دليل كل حقل مستقل، save/reload parity، وحالات الخطأ.
 
-### T4 — بقية المسار والجوال والأداء
+### T4 — بقية المسار والجوال والأداء — مكتمل وظيفيًا
 
 - توحيد presentation المنتجات والتفاصيل والسلة والcheckout والreceipt وAbout/footer.
 - مصفوفة 320/390/768/1024/1440، keyboard، reduced motion، contrast.
@@ -365,12 +345,27 @@ StorePreview (shared route/cart/checkout/order authority)
 - قياسات build والصور وrequests في Pilot إن توفرت الأدوات؛ عدم توفر التصوير لا يبرر إيقاف الاختبارات غير البصرية.
 - **نقطة توقف:** تقرير قبل/بعد والديون؛ لا PR قبل اعتماد المالك.
 
-### T5 — البوابات والتسليم
+### T5 — البوابات والتسليم — قيد الإغلاق
 
 - Repository safety، Frontend quality/audit، Backend quality، Container integration.
 - تحديث WP/ADR/evidence/docs index.
 - commits صغيرة، push إلى فرع fork المحدد فقط بعد الإذن.
 - PR إلى `sas-prog1/Eoshop:main` بعد الإذن؛ لا Merge من المطور.
+
+### نتيجة التنفيذ الحالية
+
+- أضيف `editorial_story` إلى عقد TypeScript وLaravel بحد خمسة، وأصبح الإجمالي 22 block.
+- ينشئ mapper واحد نموذج Elegant من الإسقاط العام بعد التصفية والجدولة والترتيب، دون اتصال API من المكونات العرضية.
+- استُبدل Header القديم في `elegant` بهيدر تحريري يدعم البحث والتنقل والسلة الفعلية، ولا يعرض حسابًا أو مفضلة أو مدونة وهمية.
+- تعرض الرئيسية مقدمة الموسم وخمس قصص مستقلة ثم صور «مختارات المحرر» دون أسعار أو أزرار سلة، وتستمر بقية الأقسام والمنتجات والشراء عبر renderer المشترك.
+- أضيف تبويب «القصص والمختارات» في لوحة التاجر مع الرفع المُدار للكمبيوتر والجوال، targets، الإفصاح، الراعي، الجدولة، التعتيم، focal point، النسخ والحذف والترتيب والتعطيل.
+- يحافظ تبديل القالب على blocks القالب الآخر. الحفظ يبقى ضمن workspace revision واحد، مع حماية 401/403/409/422 والعزل والحصص الخادمية القائمة.
+- أدلة First Fold المعزولة: `reports/wp5272b-elegant-stories-discovery-first-fold-1920.png` و`reports/wp5272b-elegant-stories-discovery-first-fold-1366.png`.
+- بناء Linux النهائي: JavaScript ‏`1,018.56 kB` (gzip ‏`268.64 kB`) وCSS ‏`135.98 kB` (gzip ‏`20.95 kB`). JavaScript ضمن سقف +3%؛ CSS قرابة +9.1% مقابل هدف +8%، انحراف موثق قدره نحو 1.35 kB بسبب الهوية البنيوية الجديدة.
+- دين chunk الأكبر من 500 kB سابق وما زال مؤجلًا إلى حزمة تقسيم مستقلة؛ لا توجد dependency جديدة ولا تراجع في checkout أو API.
+- Backend quality: Composer/Pint ‏296/Larastan ‏256/256/PHPUnit ‏3 اختبارات و6 assertions ناجحة.
+- Container integration: PostgreSQL ‏170 اختبارًا و1,910 assertions، وفحوص HTTP/worker/scheduler ناجحة، مع حذف المشروع المعزول وvolumes بعد النجاح.
+- Frontend quality + audit: PASS — ‏71 ملفًا و385 اختبارًا، وTypeScript وVite ناجحان، و0 ثغرات npm. ثُبّتت مهلات اختبارين غير متزامنين ظهرا متذبذبين تحت ضغط التشغيل الكامل، من دون تغيير سلوك المنتج.
 
 ## 17. الاختبارات المطلوبة
 

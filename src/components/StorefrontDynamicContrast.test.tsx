@@ -115,6 +115,7 @@ describe("storefront text contrast on merchant-defined dark surfaces", () => {
         onSelectCategory={vi.fn()}
         onOpenProduct={vi.fn()}
         onAddProduct={vi.fn()}
+        onOpenMarketingTarget={vi.fn()}
       />,
     );
 

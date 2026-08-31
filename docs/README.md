@@ -34,6 +34,7 @@
 - [WP 5.23 — Store application dossier, evidence and correction](work-packages/WP-5.23-store-application-dossier.md)
 - [WP 5.27.1 — Public storefront and premium baseline](work-packages/WP-5.27.1-public-storefront.md)
 - [WP 5.27.2A — Tech Bento storefront](work-packages/WP-5.27.2A-tech-bento-storefront.md)
+- [WP 5.27.2B — Elegant Stories storefront](work-packages/WP-5.27.2B-elegant-stories-storefront.md)
 
 ## Architecture decisions
 
@@ -58,6 +59,7 @@
 - [ADR 0034 — Canonical merchant launch console](decisions/ADR-0034-canonical-merchant-launch-console.md)
 - [ADR 0035 — Server-owned store application dossier](decisions/ADR-0035-server-owned-store-application-dossier.md)
 - [ADR 0039 — Server-owned storefront marketing blocks](decisions/ADR-0039-server-owned-storefront-marketing-blocks.md)
+- [ADR 0040 — Elegant editorial stories and discovery images](decisions/ADR-0040-elegant-editorial-stories-and-discovery.md)
 
 ## Evidence
 

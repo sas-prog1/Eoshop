@@ -1,6 +1,6 @@
 import React from "react";
 import ElegantDiscoveryRail from "./ElegantDiscoveryRail";
-import ElegantStoryStage from "./ElegantStoryStage";
+import ElegantEditorialHero from "./ElegantEditorialHero";
 import { DEFAULT_ELEGANT_STORIES_TOKENS, type ElegantStoriesHomeViewModel, type ElegantStoriesThemeTokens, type ElegantStoryViewModel } from "./model";
 import "./elegantStories.css";
 
@@ -34,15 +34,7 @@ export default function ElegantStoriesHome({ model, tokens, onOpenStory, onOpenD
 
   return (
     <main className="elegant-stories-home" data-elegant-stories-home dir="rtl" style={style}>
-      <section className="elegant-editorial-hero" aria-labelledby="elegant-editorial-title">
-        <div className="elegant-editorial-intro">
-          {model.intro.eyebrow?.trim() ? <p>{model.intro.eyebrow}</p> : null}
-          <h1 id="elegant-editorial-title">{model.intro.title}</h1>
-          {model.intro.subtitle?.trim() ? <span>{model.intro.subtitle}</span> : null}
-          {model.intro.ctaLabel?.trim() ? <button type="button" onClick={onOpenDiscoveryAll}>{model.intro.ctaLabel}</button> : null}
-        </div>
-        <ElegantStoryStage stories={model.stories} onOpenStory={onOpenStory} onOpenDiscovery={onOpenDiscoveryAll} />
-      </section>
+      <ElegantEditorialHero intro={model.intro} stories={model.stories} onOpenStory={onOpenStory} onOpenDiscovery={onOpenDiscoveryAll} />
 
       <ElegantDiscoveryRail items={model.discoveryItems} onOpen={onOpenDiscovery} onOpenAll={onOpenDiscoveryAll} />
     </main>

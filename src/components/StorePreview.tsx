@@ -17,6 +17,8 @@ import { buildPrintableInvoiceHtml, calculatePreviewCheckout, canonicalContactTa
 import { usePlatformSettings } from "../adapters/PlatformSettingsContext";
 import { readableAccent, readableForeground } from "../utils/readableForeground";
 import { storefrontAvailableQuantity, storefrontCartLineLimit } from "../workflows/orderState";
+import type { StorefrontMarketingTargetType } from "../contracts/storefrontMarketingBlocks";
+import { ElegantEditorialHeader } from "../features/storefront/elegant-stories";
 
 interface StorePreviewProps {
   config: StoreConfig;
@@ -324,6 +326,34 @@ export default function StorePreview({
     }
   });
 
+  const openMarketingTarget = (targetType: StorefrontMarketingTargetType, targetValue?: string) => {
+    if (targetType === "products") {
+      setSelectedCategory("الكل");
+      setStorePage("products");
+      return;
+    }
+    if (targetType === "category") {
+      setSelectedCategory(targetValue?.trim() || "الكل");
+      setStorePage("products");
+      return;
+    }
+    if (targetType === "product") {
+      const product = publishedProducts.find((candidate) => candidate.id === targetValue);
+      if (product) handleOpenProductProfile(product);
+      else setStorePage("products");
+      return;
+    }
+    if (!targetValue) return;
+    try {
+      const target = new URL(targetValue);
+      if (target.protocol === "https:" && !target.username && !target.password) {
+        window.open(target.toString(), "_blank", "noopener,noreferrer");
+      }
+    } catch {
+      // The server validates external campaign targets; keep the client defensive.
+    }
+  };
+
   // Filter products by category AND search query
   const displayedProducts = publishedProducts.filter((p) => {
     const matchesCategory = selectedCategory === "الكل" || p.category === selectedCategory;
@@ -566,163 +596,27 @@ export default function StorePreview({
           </div>
         </header>
       ) : (
-        /* ELEGANT LUXURY TEMPLATE HEADER DESIGN */
-        <header 
-          className="sticky top-0 z-20 px-4 py-3 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 backdrop-blur-md shadow-2xs"
-          style={{ 
-            backgroundColor: cardBgColor,
-            borderColor: borderColor
+        <ElegantEditorialHeader
+          storeName={config.storeName || "متجر جديد"}
+          logoUrl={config.logoUrl}
+          categories={categories.filter((category) => category !== "الكل")}
+          cartCount={totalItems}
+          searchQuery={searchQuery}
+          currentRoute={storePage === "home" || storePage === "products" || storePage === "about" ? storePage : undefined}
+          tokens={{ surface: cardBgColor, ink: secondaryOnCard, mutedInk: effectiveTextColor, border: borderColor, accent: primaryOnWhite }}
+          onSearchChange={setSearchQuery}
+          onSearchSubmit={() => setStorePage("products")}
+          onOpenHome={() => setStorePage("home")}
+          onOpenProducts={() => setStorePage("products")}
+          onOpenAbout={() => setStorePage("about")}
+          onOpenCart={openCart}
+          onSelectCategory={(category) => {
+            setSelectedCategory(category);
+            setStorePage("products");
           }}
-        >
-          <div className="flex items-center justify-between w-full md:w-auto">
-            {/* Brand Logo & Name */}
-            <button
-              type="button"
-              onClick={() => setStorePage("home")}
-              className="flex items-center gap-2.5 text-right cursor-pointer group rounded-xl"
-              aria-label={`العودة إلى الصفحة الرئيسية لمتجر ${config.storeName || "المتجر"}`}
-            >
-              {config.logoUrl ? (
-                <img 
-                  src={config.logoUrl} 
-                  alt={config.storeName} 
-                  loading="eager"
-                  decoding="async"
-                  sizes="220px"
-                  style={{ height: `${config.logoSize || 42}px` }} 
-                  className="w-auto max-w-[150px] sm:max-w-[220px] object-contain shrink-0 transition group-hover:scale-105 filter drop-shadow-xs"
-                  referrerPolicy="no-referrer" 
-                />
-              ) : config.logoIcon ? (
-                <span 
-                  style={{ 
-                    width: `${config.logoSize || 40}px`, 
-                    height: `${config.logoSize || 40}px`,
-                    borderColor: `${primaryColor}40`,
-                    fontSize: `${Math.max(16, (config.logoSize || 40) * 0.5)}px`
-                  }} 
-                  className="rounded-xl flex items-center justify-center shadow-2xs border shrink-0 transition bg-white group-hover:scale-105"
-                >
-                  {config.logoIcon}
-                </span>
-              ) : null}
-              <div className="flex flex-col">
-                <h1 className="text-sm md:text-base font-black tracking-tight leading-none" style={{ color: secondaryOnCard }}>
-                  {config.storeName || "متجر جديد"}
-                </h1>
-                <p className="text-[10px] text-slate-500 font-bold truncate max-w-[150px] md:max-w-xs leading-tight mt-0.5">
-                  {config.slogan || "أهلاً بكم في متجرنا"}
-                </p>
-              </div>
-            </button>
-
-            {/* Mobile Right Controls: Cart */}
-            <div className="flex lg:hidden items-center gap-2">
-              <button
-                type="button"
-                onClick={(event) => openCart(event.currentTarget)}
-                aria-label={`فتح سلة التسوق، ${totalItems} منتج`}
-                className="p-2.5 rounded-xl relative transition flex items-center justify-center text-white"
-                style={{ backgroundColor: primaryColor, color: primaryForeground }}
-              >
-                <ShoppingBag className="w-4 h-4" />
-                {totalItems > 0 && (
-                  <span
-                    data-storefront-cart-count
-                    className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shadow-md"
-                    style={{ backgroundColor: secondaryColor, color: secondaryForeground }}
-                  >
-                    {totalItems}
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="relative order-3 w-full md:order-none md:max-w-xs lg:max-w-[220px]">
-            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="search"
-              aria-label="البحث في منتجات المتجر"
-              value={searchQuery}
-              onChange={(event) => {
-                setSearchQuery(event.target.value);
-                if (event.target.value.trim()) setStorePage("products");
-              }}
-              placeholder="ابحث في المنتجات"
-              className="min-h-11 w-full rounded-xl border py-2 pe-9 ps-9 text-xs font-bold outline-none transition focus:ring-2"
-              style={{ backgroundColor: bgColor, borderColor, color: effectiveTextColor, outlineColor: primaryColor }}
-            />
-            {searchQuery && <button type="button" onClick={() => setSearchQuery("")} aria-label="مسح البحث" className="absolute left-2 top-1/2 min-h-8 min-w-8 -translate-y-1/2 rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-3.5 w-3.5" /></button>}
-          </div>
-
-          {/* Center Page Navigation Bar (Desktop Only) */}
-          <nav aria-label="التنقل الرئيسي في المتجر" className="hidden lg:flex items-center justify-center gap-1 p-1 rounded-xl self-center border bg-slate-400/10"
-               style={{ borderColor }}>
-            {[
-              { id: "home", label: "الرئيسية", icon: Home },
-              { id: "products", label: "المنتجات", icon: ShoppingBag },
-              { id: "about", label: "عن المتجر", icon: Info },
-              { id: "contact", label: "التواصل", icon: Phone }
-            ].map((nav) => {
-              const isActive = storePage === nav.id;
-              const IconComp = nav.icon;
-              return (
-                <button
-                  key={nav.id}
-                  data-storefront-nav={nav.id}
-                  type="button"
-                  onClick={() => setStorePage(nav.id as any)}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    isActive ? "shadow-2xs" : "hover:text-slate-600 opacity-80 hover:opacity-100"
-                  }`}
-                  style={{
-                    backgroundColor: isActive ? primaryColor : "transparent",
-                    color: isActive ? primaryForeground : secondaryOnCard
-                  }}
-                >
-                  <IconComp className="h-3.5 w-3.5" />
-                  <span>{nav.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Desktop Header Actions */}
-          <div className="hidden lg:flex items-center gap-3">
-            {canonicalPhone && (
-              <a 
-                href={`tel:${canonicalPhone}`}
-                className="p-2 px-3 rounded-xl transition flex items-center gap-1.5 text-xs font-bold"
-                style={{ 
-                  backgroundColor: "#f5efe6",
-                  color: primaryOnWarmSurface
-                }}
-              >
-                <Phone className="w-3.5 h-3.5" />
-                <span>{canonicalPhone}</span>
-              </a>
-            )}
-
-            <button
-              type="button"
-              onClick={(event) => openCart(event.currentTarget)}
-              aria-label={`فتح سلة التسوق، ${totalItems} منتج`}
-              className="p-2.5 px-4 rounded-xl relative transition flex items-center gap-2 font-bold text-xs text-white"
-              style={{ backgroundColor: primaryColor, color: primaryForeground }}
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span>السلة</span>
-              {totalItems > 0 && (
-                <span className="w-5 h-5 rounded-full text-[10px] font-extrabold flex items-center justify-center shadow-2xs mr-1 bg-white text-slate-900">
-                  {totalItems}
-                </span>
-              )}
-            </button>
-          </div>
-        </header>
+        />
       )}
+
 
       {/* ------------------- PAGE CONTENTS RENDER ------------------- */}
       <div className="flex-1">
@@ -743,6 +637,7 @@ export default function StorePreview({
             }}
             onOpenProduct={handleOpenProductProfile}
             onAddProduct={addToCart}
+            onOpenMarketingTarget={openMarketingTarget}
           />
         )}
         {/* 2. PRODUCTS PAGE (المنتجات) */}

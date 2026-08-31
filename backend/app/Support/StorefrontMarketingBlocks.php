@@ -17,6 +17,7 @@ final class StorefrontMarketingBlocks
         'hero_bento' => 5,
         'side_ad' => 2,
         'discovery' => 10,
+        'editorial_story' => 5,
     ];
 
     /** @return list<string> */
@@ -42,7 +43,7 @@ final class StorefrontMarketingBlocks
             $prefix.'heroBannerTargetValue' => ['nullable', 'string', 'max:255'],
             $prefix.'heroBannerFocalPointX' => ['nullable', 'integer', 'min:0', 'max:100'],
             $prefix.'heroBannerFocalPointY' => ['nullable', 'integer', 'min:0', 'max:100'],
-            $base => ['sometimes', 'array', 'max:17'],
+            $base => ['sometimes', 'array', 'max:'.array_sum(self::PLACEMENT_LIMITS)],
             $base.'.*' => ['required', 'array:'.implode(',', self::keys())],
             $base.'.*.id' => ['required', 'uuid', 'distinct:strict'],
             $base.'.*.placement' => ['required', Rule::in(array_keys(self::PLACEMENT_LIMITS))],

@@ -158,3 +158,7 @@ StorefrontMarketingBlock
 - Container integration على PostgreSQL معزول.
 - `git diff --check`.
 - مراجعة PR وCI.
+
+## 11. امتداد WP 5.27.2B اللاحق
+
+أضاف [ADR 0040](../decisions/ADR-0040-elegant-editorial-stories-and-discovery.md) placement واحدًا باسم `editorial_story` بحد خمس قصص، فأصبح الحد الإجمالي للعقد المشترك 22. هذا امتداد لاحق لقالب Elegant؛ لا يغير حدود Tech نفسها (5 Hero Bento و2 Side Ad و10 Discovery)، ولا يضيف `featuredProductIds` أو endpoint أو Migration.

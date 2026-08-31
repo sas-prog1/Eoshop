@@ -12,6 +12,7 @@ import {
 const stories: ElegantStoryViewModel[] = [
   {
     id: "horizons",
+    targetType: "products",
     title: "آفاق بلا حدود",
     subtitle: "مجموعة موسمية بتفاصيل هادئة وحضور لا يُنسى.",
     badge: "ربيع / صيف 2026",
@@ -26,6 +27,7 @@ const stories: ElegantStoryViewModel[] = [
   },
   {
     id: "home",
+    targetType: "products",
     title: "تحرير المنزل",
     subtitle: "قطع مدروسة لمساحة أكثر دفئًا وهدوءًا.",
     ctaLabel: "اكتشف المجموعة",
@@ -38,6 +40,7 @@ const stories: ElegantStoryViewModel[] = [
   },
   {
     id: "natural-glow",
+    targetType: "products",
     title: "إشراقة طبيعية",
     subtitle: "جمال هادئ من العناية اليومية إلى اللمسة الأخيرة.",
     badge: "قصة الموسم",
@@ -52,6 +55,7 @@ const stories: ElegantStoryViewModel[] = [
   },
   {
     id: "technology",
+    targetType: "products",
     title: "إطلاق التقنية",
     subtitle: "ابتكارات جديدة بتصميم ينسجم مع يومك.",
     ctaLabel: "شاهد الإطلاق",
@@ -65,6 +69,7 @@ const stories: ElegantStoryViewModel[] = [
   },
   {
     id: "my-style",
+    targetType: "products",
     title: "أسلوبي حكايتي",
     subtitle: "اختيارات تعبّر عنك، من التفاصيل اليومية إلى المناسبات.",
     ctaLabel: "استكشف الأسلوب",
@@ -80,14 +85,14 @@ const stories: ElegantStoryViewModel[] = [
 ];
 
 const discoveryItems: ElegantDiscoveryViewModel[] = [
-  { id: "bags", title: "حقائب مختارة", imageUrl: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=700&q=84", altText: "حقيبة جلدية بتصميم كلاسيكي" },
-  { id: "perfume", title: "عطور استثنائية", imageUrl: "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=700&q=84", altText: "زجاجة عطر فاخرة" },
-  { id: "eyewear", title: "نظارات الموسم", imageUrl: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=700&q=84", altText: "نظارة شمسية سوداء" },
-  { id: "decor", title: "تفاصيل المنزل", imageUrl: "https://images.unsplash.com/photo-1618220179428-22790b461013?auto=format&fit=crop&w=700&q=84", altText: "قطعة ديكور منزلية هادئة" },
-  { id: "watches", title: "ساعات خالدة", imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=700&q=84", altText: "ساعة يد أنيقة" },
-  { id: "shoes", title: "خطوات جديدة", imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=700&q=84", altText: "حذاء رياضي عصري" },
-  { id: "beauty", title: "طقوس الجمال", imageUrl: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=700&q=84", altText: "مجموعة مستحضرات تجميل" },
-  { id: "living", title: "مساحات ملهمة", imageUrl: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=700&q=84", altText: "غرفة معيشة عصرية", disclosure: "sponsored", sponsorName: "دار المساحة" },
+  { id: "bags", title: "حقائب مختارة", imageUrl: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=700&q=84", altText: "حقيبة جلدية بتصميم كلاسيكي", targetType: "products" },
+  { id: "perfume", title: "عطور استثنائية", imageUrl: "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=700&q=84", altText: "زجاجة عطر فاخرة", targetType: "products" },
+  { id: "eyewear", title: "نظارات الموسم", imageUrl: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=700&q=84", altText: "نظارة شمسية سوداء", targetType: "products" },
+  { id: "decor", title: "تفاصيل المنزل", imageUrl: "https://images.unsplash.com/photo-1618220179428-22790b461013?auto=format&fit=crop&w=700&q=84", altText: "قطعة ديكور منزلية هادئة", targetType: "products" },
+  { id: "watches", title: "ساعات خالدة", imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=700&q=84", altText: "ساعة يد أنيقة", targetType: "products" },
+  { id: "shoes", title: "خطوات جديدة", imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=700&q=84", altText: "حذاء رياضي عصري", targetType: "products" },
+  { id: "beauty", title: "طقوس الجمال", imageUrl: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=700&q=84", altText: "مجموعة مستحضرات تجميل", targetType: "products" },
+  { id: "living", title: "مساحات ملهمة", imageUrl: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=700&q=84", altText: "غرفة معيشة عصرية", disclosure: "sponsored", sponsorName: "دار المساحة", targetType: "products" },
 ];
 
 const model: ElegantStoriesHomeViewModel = {

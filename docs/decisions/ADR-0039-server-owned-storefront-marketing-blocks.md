@@ -4,6 +4,8 @@
 
 Accepted for WP 5.27.2A on 2026-08-31.
 
+WP 5.27.2B subsequently proved the second-template need and accepted [ADR 0040](ADR-0040-elegant-editorial-stories-and-discovery.md). That decision adds `editorial_story` بحد خمس قصص ويرفع الحد الإجمالي من 17 إلى 22، while every other field, ownership, projection and revision rule in this decision remains unchanged.
+
 ## Context
 
 WP 5.27.1 established one public storefront renderer and a server-authoritative purchase journey. The approved Tech Bento direction adds five hero tiles, two side advertisements and up to ten discovery items, with independent desktop/mobile media, links, advertising disclosure and optional schedules. Keeping these values in browser-only state would allow stale or cross-tenant assets, unpublished catalog targets and hidden advertising metadata to reach the public storefront.

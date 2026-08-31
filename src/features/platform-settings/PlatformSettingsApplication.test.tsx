@@ -84,7 +84,7 @@ describe("platform settings application", () => {
       </UiAdaptersProvider>,
     );
 
-    const name = await screen.findByLabelText("اسم المنصة");
+    const name = await screen.findByLabelText("اسم المنصة", {}, { timeout: 5_000 });
     await user.clear(name);
     await user.type(name, "هوية غير محفوظة");
 

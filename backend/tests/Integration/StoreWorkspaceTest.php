@@ -2583,6 +2583,7 @@ class StoreWorkspaceTest extends TestCase
         $config['heroBannerFocalPointY'] = 38;
         $config['marketingBlocks'] = [
             $makeBlock('hero_bento', 1, ['targetType' => 'category', 'targetValue' => 'General']),
+            $makeBlock('editorial_story', 1, ['title' => 'قصة الموسم']),
             $makeBlock('side_ad', 1, ['enabled' => false]),
             $makeBlock('discovery', 1, ['startsAt' => '2099-01-01T00:00:00Z']),
         ];
@@ -2595,7 +2596,7 @@ class StoreWorkspaceTest extends TestCase
                 'archiveProductIds' => [],
             ])->assertOk()
             ->assertJsonPath('data.revision', 2)
-            ->assertJsonCount(3, 'data.config.marketingBlocks')
+            ->assertJsonCount(4, 'data.config.marketingBlocks')
             ->assertJsonPath('data.config.heroBannerTargetType', 'category')
             ->assertJsonPath('data.config.heroBannerFocalPointX', 64)
             ->json('data');
@@ -2614,8 +2615,9 @@ class StoreWorkspaceTest extends TestCase
         $this->flushSession();
         $this->getJson("http://{$domain}/api/store/config")
             ->assertOk()
-            ->assertJsonCount(1, 'data.config.marketingBlocks')
-            ->assertJsonPath('data.config.marketingBlocks.0.placement', 'hero_bento');
+            ->assertJsonCount(2, 'data.config.marketingBlocks')
+            ->assertJsonPath('data.config.marketingBlocks.0.placement', 'hero_bento')
+            ->assertJsonPath('data.config.marketingBlocks.1.placement', 'editorial_story');
     }
 
     public function test_storefront_marketing_blocks_reject_deletion_invalid_layout_targets_and_foreign_assets(): void
@@ -2704,7 +2706,7 @@ class StoreWorkspaceTest extends TestCase
         ])->assertConflict()->assertJsonPath('code', 'workspace_asset_budget_exceeded');
 
         $hero = $workspace['config'];
-        $hero['marketingBlocks'] = [$block('hero_bento')];
+        $hero['marketingBlocks'] = [$block('editorial_story')];
         $saved = $this->actingAs($owner)->patchJson("/api/merchant/stores/{$tenant->id}/workspace", [
             'revision' => 1, 'catalogRevision' => 1, 'config' => $hero, 'archiveProductIds' => [],
         ])->assertOk()->assertJsonPath('data.revision', 2)->json('data');

@@ -2,7 +2,11 @@ export const STOREFRONT_MARKETING_PLACEMENT_LIMITS = {
   hero_bento: 5,
   side_ad: 2,
   discovery: 10,
+  editorial_story: 5,
 } as const;
+
+export const STOREFRONT_MARKETING_BLOCK_LIMIT = Object.values(STOREFRONT_MARKETING_PLACEMENT_LIMITS)
+  .reduce((total, limit) => total + limit, 0);
 
 export type StorefrontMarketingPlacement = keyof typeof STOREFRONT_MARKETING_PLACEMENT_LIMITS;
 export type StorefrontMarketingContentType = "category" | "product" | "campaign";
@@ -134,7 +138,7 @@ function validBlock(value: unknown): value is StorefrontMarketingBlock {
 }
 
 export function validStorefrontMarketingBlocks(value: unknown): value is StorefrontMarketingBlock[] {
-  if (!Array.isArray(value) || value.length > 17 || value.some((block) => !validBlock(block))) return false;
+  if (!Array.isArray(value) || value.length > STOREFRONT_MARKETING_BLOCK_LIMIT || value.some((block) => !validBlock(block))) return false;
   const ids = new Set<string>();
   const positions = new Map<StorefrontMarketingPlacement, number[]>();
   for (const block of value) {

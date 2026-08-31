@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for WP 5.27.2B on 2026-08-30. T0 documentation is complete; product implementation is blocked until the shared WP 5.27.2A/T1 marketing contract is approved and available on the integration base.
+Accepted for WP 5.27.2B on 2026-08-31. The shared WP 5.27.2A/T1 contract is merged at `b7ed06b4a5f67871216696ae1d1342192dd11370`, and the Elegant implementation extends that contract without a parallel writer or API.
 
 ## Context
 
@@ -27,13 +27,14 @@ The decision is therefore limited to how `themeStyle=elegant` composes the share
 11. Public and authenticated preview use the same config, filters and renderer. Theme-specific components remain presentational below shared route, catalog, pricing, inventory, cart, checkout and order state.
 12. All public routes receive a coherent Elegant presentation, but no route is forked: home, products, product detail, cart, checkout, receipt, About/contact and footer continue to use the shared commerce handlers and APIs.
 13. Theme switching preserves both Tech placements and Elegant stories without deleting hidden-theme content. The customization UI shows only placements relevant to the selected theme and clearly states that other-theme content is retained.
-14. No shared product file is modified on the Elegant branch until it has rebased on the approved WP 5.27.2A/T1 contract. Any contract difference is resolved in this ADR and the work package before code, not through a competing implementation.
+14. The Elegant branch rebased on the approved WP 5.27.2A/T1 contract before modifying shared product files. Contract differences are resolved in this ADR and the work package, not through a competing implementation.
 
 ## Contract delta
 
 Relative to the approved shared WP 5.27.2A contract, WP 5.27.2B requests only:
 
 - `placement += editorial_story`, maximum five.
+- aggregate maximum `17 -> 22`.
 
 All campaign fields, targets, scheduling, disclosure, asset ownership, revision behavior and error semantics come from the shared contract unchanged.
 
@@ -43,7 +44,7 @@ All campaign fields, targets, scheduling, disclosure, asset ownership, revision 
 - Merchants can replace and schedule each portrait story and discovery image independently without a deployment.
 - Fixed template composition protects responsive behavior, accessibility and visual quality; merchants control content, not arbitrary layout.
 - Reusing `discovery` avoids a second image contract and avoids misrepresenting editorial tiles as product cards.
-- Work can proceed in parallel at the design/document boundary, but shared integration waits for the first contract checkpoint.
+- The renderer and merchant editor can evolve independently by theme while saving through one revisioned aggregate.
 
 ## Rejected alternatives
 

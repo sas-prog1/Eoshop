@@ -103,6 +103,7 @@ final class StoreAssetPath
             'hero_bento' => ['imageUrl' => 750 * 1024, 'mobileImageUrl' => 500 * 1024],
             'side_ad' => ['imageUrl' => 1024 * 1024, 'mobileImageUrl' => 600 * 1024],
             'discovery' => ['imageUrl' => 350 * 1024, 'mobileImageUrl' => 350 * 1024],
+            'editorial_story' => ['imageUrl' => 900 * 1024, 'mobileImageUrl' => 500 * 1024],
         ];
         foreach (is_array($config['marketingBlocks'] ?? null) ? $config['marketingBlocks'] : [] as $block) {
             if (! is_array($block) || ! isset($placementBudgets[$block['placement'] ?? ''])) {

@@ -20,12 +20,13 @@ function story(index: number): ElegantStoryViewModel {
     altText: `صورة القصة ${index}`,
     disclosure: index === 2 ? "sponsored" : "none",
     sponsorName: index === 2 ? "دار الاختبار" : undefined,
+    targetType: "products",
   };
 }
 
 const discoveryItems: ElegantDiscoveryViewModel[] = [
-  { id: "discovery-1", title: "حقائب مختارة", imageUrl: "https://cdn.example.test/bags.webp", altText: "حقيبة مختارة" },
-  { id: "discovery-2", title: "عطور استثنائية", imageUrl: "https://cdn.example.test/perfume.webp", altText: "عطر مختار", disclosure: "sponsored", sponsorName: "دار الاختبار" },
+  { id: "discovery-1", title: "حقائب مختارة", imageUrl: "https://cdn.example.test/bags.webp", altText: "حقيبة مختارة", targetType: "products" },
+  { id: "discovery-2", title: "عطور استثنائية", imageUrl: "https://cdn.example.test/perfume.webp", altText: "عطر مختار", disclosure: "sponsored", sponsorName: "دار الاختبار", targetType: "products" },
 ];
 
 function model(stories: ElegantStoryViewModel[]): ElegantStoriesHomeViewModel {

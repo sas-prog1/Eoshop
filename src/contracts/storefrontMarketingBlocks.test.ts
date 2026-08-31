@@ -43,11 +43,12 @@ describe("storefront marketing blocks contract", () => {
     expect(cloned[0]).not.toBe(original[0]);
   });
 
-  it("accepts the exact 17-block placement capacity", () => {
+  it("accepts the exact 22-block placement capacity including editorial stories", () => {
     const blocks = [
       ...Array.from({ length: 5 }, (_, index) => block(index + 1)),
       ...Array.from({ length: 2 }, (_, index) => block(index + 6, { placement: "side_ad", position: index + 1 })),
       ...Array.from({ length: 10 }, (_, index) => block(index + 8, { placement: "discovery", position: index + 1 })),
+      ...Array.from({ length: 5 }, (_, index) => block(index + 18, { placement: "editorial_story", position: index + 1 })),
     ];
     expect(validStorefrontMarketingBlocks(blocks)).toBe(true);
   });
@@ -56,8 +57,8 @@ describe("storefront marketing blocks contract", () => {
     expect(validStorefrontMarketingBlocks({ 0: block() })).toBe(false);
   });
 
-  it("rejects more than 17 blocks", () => {
-    expect(validStorefrontMarketingBlocks(Array.from({ length: 18 }, (_, index) => block(index + 1)))).toBe(false);
+  it("rejects more than 22 blocks", () => {
+    expect(validStorefrontMarketingBlocks(Array.from({ length: 23 }, (_, index) => block(index + 1)))).toBe(false);
   });
 
   it("rejects unknown block keys", () => {
@@ -74,6 +75,7 @@ describe("storefront marketing blocks contract", () => {
 
   it("enforces the limit of every placement", () => {
     expect(validStorefrontMarketingBlocks(Array.from({ length: 6 }, (_, index) => block(index + 1)))).toBe(false);
+    expect(validStorefrontMarketingBlocks(Array.from({ length: 6 }, (_, index) => block(index + 1, { placement: "editorial_story" })))).toBe(false);
   });
 
   it("requires unique contiguous positions from one", () => {

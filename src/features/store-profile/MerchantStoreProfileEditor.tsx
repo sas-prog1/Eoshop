@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { AlertCircle, ArrowDown, ArrowUp, Eye, EyeOff, Image, LayoutList, Loader2, Palette, Store, Trash2, Type, Upload } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, Eye, EyeOff, Image, LayoutList, Loader2, Megaphone, Palette, Store, Trash2, Type, Upload } from "lucide-react";
 import type { StoreAssetUpload } from "../../adapters/uiAdapters";
 import { uiErrorMessage } from "../../contracts/uiError";
 import type { StoreConfig } from "../../types";
 import { STOREFRONT_SECTION_LABELS, storefrontSectionsOrDefault } from "../../contracts/storefrontSections";
+import MerchantMarketingBlocksEditor from "./MerchantMarketingBlocksEditor";
 
-type ProfileSection = "identity" | "appearance" | "hero" | "layout";
+type ProfileSection = "identity" | "appearance" | "hero" | "campaigns" | "layout";
 type AssetField = "logoUrl" | "heroBannerImage";
 
 interface MerchantStoreProfileEditorProps {
@@ -21,6 +22,7 @@ const SECTIONS: Array<{ key: ProfileSection; label: string; icon: typeof Store }
   { key: "identity", label: "هوية المتجر", icon: Store },
   { key: "appearance", label: "الألوان والخط", icon: Palette },
   { key: "hero", label: "واجهة الترحيب", icon: Image },
+  { key: "campaigns", label: "القصص والمختارات", icon: Megaphone },
   { key: "layout", label: "ترتيب الأقسام", icon: LayoutList },
 ];
 
@@ -178,7 +180,7 @@ export default function MerchantStoreProfileEditor({
   return (
     <div className="space-y-5" dir="rtl">
       <div className="rounded-2xl border border-slate-200 bg-white p-1.5">
-        <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-1 sm:grid-cols-5">
           {SECTIONS.map(({ key, label, icon: Icon }) => (
             <button key={key} type="button" onClick={() => setSection(key)} className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-[11px] font-black transition ${section === key ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"}`}>
               <Icon className="h-4 w-4" /> {label}
@@ -230,6 +232,16 @@ export default function MerchantStoreProfileEditor({
           <div className="grid gap-3 sm:grid-cols-2"><label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">الشارة</span><input value={config.heroBannerBadge ?? ""} onChange={(event) => set("heroBannerBadge", event.target.value)} maxLength={255} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label><label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">نص الزر</span><input value={config.heroBannerButtonText ?? ""} onChange={(event) => set("heroBannerButtonText", event.target.value)} maxLength={255} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label></div>
           <div className="grid gap-3 sm:grid-cols-2"><label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">ارتفاع الواجهة</span><select value={config.heroBannerHeight ?? "medium"} onChange={(event) => set("heroBannerHeight", event.target.value as StoreConfig["heroBannerHeight"])} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="compact">مدمج</option><option value="medium">متوسط</option><option value="large">كبير</option></select></label><label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">تعتيم الصورة: {config.heroBannerOverlayOpacity ?? 35}%</span><input type="range" min="0" max="100" value={config.heroBannerOverlayOpacity ?? 35} onChange={(event) => set("heroBannerOverlayOpacity", Number(event.target.value))} className="w-full" /></label></div>
         </div>
+      )}
+
+      {section === "campaigns" && (
+        <MerchantMarketingBlocksEditor
+          config={config}
+          activeTenantId={activeTenantId}
+          mediaOwnerKey={mediaOwnerKey}
+          onChange={onChange}
+          uploadAsset={uploadAsset}
+        />
       )}
 
       {section === "layout" && (

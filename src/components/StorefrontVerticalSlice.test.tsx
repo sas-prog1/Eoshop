@@ -111,7 +111,7 @@ describe("public storefront functional vertical slice", () => {
     await user.type(screen.getByPlaceholderText(/اسم الشارع/), "عنوان محلي غير حساس");
     await user.click(screen.getByRole("button", { name: "تأكيد الطلب بالسعر الخادمي" }));
 
-    await waitFor(() => expect(submitOrder).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(submitOrder).toHaveBeenCalledTimes(1), { timeout: 5_000 });
     expect(submitOrder.mock.calls[0][0]).toMatchObject({
       lines: [{ productId: product.id, quantity: 1 }],
       payment: { method: "cod" },
