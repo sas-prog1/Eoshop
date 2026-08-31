@@ -147,9 +147,9 @@ describe("storefront text contrast on merchant-defined dark surfaces", () => {
       />,
     );
 
-    expectReadableOn(screen.getByRole("button", { name: "العودة إلى المنتجات" }), cardBackground);
+    expectReadableOn(screen.getByRole("button", { name: "العودة إلى المجموعة" }), pageBackground);
     expectReadableOn(screen.getByText(product.description), pageBackground);
-    expectReadableOn(screen.getByText("يُثبت السعر النهائي والمخزون عند إرسال الطلب إلى الخادم."), cardBackground);
+    expectReadableOn(screen.getByText("يثبت الخادم السعر والمخزون النهائيين عند إرسال الطلب."), pageBackground);
     expectReadableOn(screen.getByRole("heading", { name: "الشحن والدفع المنشور" }), cardBackground);
     expectReadableOn(screen.getByText(/شحن مجاني ابتداءً من/), cardBackground);
     expectReadableOn(screen.getByText("الدفع عند الاستلام متاح"), cardBackground);

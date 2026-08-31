@@ -4,6 +4,7 @@ import type { Product, StoreConfig } from "../types";
 import ProductArt from "./ProductArt";
 import { readableAccent, readableForeground } from "../utils/readableForeground";
 import { storefrontAvailableQuantity, storefrontCartLineLimit } from "../workflows/orderState";
+import { ElegantProductDetail } from "../features/storefront/elegant-stories";
 
 interface Props {
   product: Product;
@@ -48,6 +49,30 @@ export default function StorefrontProductDetail({ product, config, primaryColor,
   useEffect(() => {
     if (remaining > 0) setQuantity((value) => Math.min(value, remaining));
   }, [remaining]);
+
+  if (config.themeStyle === "elegant") {
+    return (
+      <ElegantProductDetail
+        product={product}
+        config={config}
+        primaryColor={primaryColor}
+        secondaryColor={secondaryColor}
+        images={images}
+        imageIndex={imageIndex}
+        quantity={quantity}
+        available={available}
+        remaining={remaining}
+        outOfStock={outOfStock}
+        atCartLimit={atCartLimit}
+        bankUsable={bankUsable}
+        walletCount={walletCount}
+        onBack={onBack}
+        onSelectImage={setImageIndex}
+        onQuantityChange={setQuantity}
+        onAdd={() => onAdd(product, quantity)}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 text-right animate-fadeIn">

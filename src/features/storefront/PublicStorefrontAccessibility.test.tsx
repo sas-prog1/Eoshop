@@ -202,7 +202,7 @@ describe("public storefront acceptance boundary", () => {
     expect(contrastRatio(computedColorAsHex(cartCount!), computedBackgroundAsHex(cartCount!))).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(computedColorAsHex(inactiveNavigation!), "#FFFFFF")).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(computedColorAsHex(productsHeading!), "#000000")).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(computedColorAsHex(unselectedCategory!), "#f5efe6")).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(computedColorAsHex(unselectedCategory!), "#000000")).toBeGreaterThanOrEqual(4.5);
   });
 
   it("exposes semantic store navigation and a keyboard-operable brand action", () => {

@@ -70,7 +70,7 @@ describe("StorePreview truthful customer surfaces", () => {
     };
     const productsView = render(<StorePreview {...props(config, "products")} />);
 
-    expect(await screen.findByText("معرض جميع المنتجات المعروضة")).toBeTruthy();
+    expect(await screen.findByText(preset.themeStyle === "elegant" ? "اكتشف ما يناسب أسلوبك" : "معرض جميع المنتجات المعروضة")).toBeTruthy();
     expect(screen.getByText("Published truth product")).toBeTruthy();
     expect(screen.queryByText("Hidden draft product")).toBeNull();
     expect(screen.queryByText("Hidden archived product")).toBeNull();

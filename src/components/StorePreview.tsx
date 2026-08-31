@@ -18,7 +18,7 @@ import { usePlatformSettings } from "../adapters/PlatformSettingsContext";
 import { readableAccent, readableForeground } from "../utils/readableForeground";
 import { storefrontAvailableQuantity, storefrontCartLineLimit } from "../workflows/orderState";
 import type { StorefrontMarketingTargetType } from "../contracts/storefrontMarketingBlocks";
-import { ElegantEditorialHeader } from "../features/storefront/elegant-stories";
+import { ElegantCatalog, ElegantEditorialHeader } from "../features/storefront/elegant-stories";
 
 interface StorePreviewProps {
   config: StoreConfig;
@@ -642,6 +642,27 @@ export default function StorePreview({
         )}
         {/* 2. PRODUCTS PAGE (المنتجات) */}
         {storePage === "products" && (
+          isElegant ? (
+            <ElegantCatalog
+              products={displayedProducts}
+              categories={categories}
+              selectedCategory={selectedCategory}
+              searchQuery={searchQuery}
+              currency={config.currency || "ر.س"}
+              primaryColor={primaryColor}
+              secondaryColor={secondaryColor}
+              textColor={textColor}
+              backgroundColor={bgColor}
+              cardBackground={cardBgColor}
+              borderColor={borderColor}
+              reducedMotion={prefersReducedMotion}
+              onSearchChange={setSearchQuery}
+              onSelectCategory={setSelectedCategory}
+              onReset={() => { setSelectedCategory("الكل"); setSearchQuery(""); }}
+              onOpen={handleOpenProductProfile}
+              onAdd={addToCart}
+            />
+          ) : (
           <div className="max-w-7xl mx-auto px-4 py-8 space-y-6 animate-fadeIn pb-12">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4"
                  style={{ borderColor }}>
@@ -722,6 +743,7 @@ export default function StorePreview({
               </div>
             )}
           </div>
+          )
         )}
 
         {/* 3. ABOUT US PAGE (من نحن) */}

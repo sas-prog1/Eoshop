@@ -4,5 +4,8 @@ export { default as ElegantStoriesHome } from "./ElegantStoriesHome";
 export { default as ElegantStoryStage } from "./ElegantStoryStage";
 export { default as ElegantStoryCard } from "./ElegantStoryCard";
 export { default as ElegantDiscoveryRail } from "./ElegantDiscoveryRail";
+export { default as ElegantCatalog } from "./ElegantCatalog";
+export { default as ElegantCatalogProductCard } from "./ElegantCatalogProductCard";
+export { default as ElegantProductDetail } from "./ElegantProductDetail";
 export * from "./model";
 export * from "./storefrontModel";

@@ -35,6 +35,7 @@
 - [WP 5.27.1 — Public storefront and premium baseline](work-packages/WP-5.27.1-public-storefront.md)
 - [WP 5.27.2A — Tech Bento storefront](work-packages/WP-5.27.2A-tech-bento-storefront.md)
 - [WP 5.27.2B — Elegant Stories storefront](work-packages/WP-5.27.2B-elegant-stories-storefront.md)
+- [WP 5.27.2C — Elegant catalog and product detail](work-packages/WP-5.27.2C-elegant-catalog-detail.md)
 
 ## Architecture decisions
 
