@@ -102,6 +102,7 @@ export default function StorefrontHome({
           accent: primaryPageAccent,
         }}
         onOpenStory={(story) => onOpenMarketingTarget(story.targetType, story.targetValue)}
+        onOpenIntro={(intro) => onOpenMarketingTarget(intro.targetType, intro.targetValue)}
         onOpenDiscovery={(item) => onOpenMarketingTarget(item.targetType, item.targetValue)}
         onOpenDiscoveryAll={onOpenProducts}
       />
@@ -122,7 +123,7 @@ export default function StorefrontHome({
         onOpenProducts={onOpenProducts}
         onSelectCategory={onSelectCategory}
       />
-    ) : <StorefrontHero config={config} isElegant={isElegant} primaryColor={primaryColor} secondaryColor={secondaryColor} onOpenProducts={onOpenProducts} />,
+    ) : <StorefrontHero config={config} isElegant={isElegant} primaryColor={primaryColor} secondaryColor={secondaryColor} onOpen={() => onOpenMarketingTarget(config.heroBannerTargetType ?? "products", config.heroBannerTargetValue)} />,
     trust: !isElegant ? (
       <TechTrustTicker
         items={facts.map(({ key, label }) => ({ key, label }))}

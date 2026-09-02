@@ -43,6 +43,8 @@ export interface ElegantEditorialIntroViewModel {
   title: string;
   subtitle?: string;
   ctaLabel?: string;
+  targetType: Exclude<StorefrontMarketingTargetType, "external">;
+  targetValue?: string;
 }
 
 export interface ElegantStoriesThemeTokens {

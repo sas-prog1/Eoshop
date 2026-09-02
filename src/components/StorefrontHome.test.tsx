@@ -57,8 +57,11 @@ describe("StorefrontHome", () => {
       ...ELEGANT_PRESET,
       showHeroBanner: false,
       heroBannerImage: "https://cdn.example.test/hero.jpg",
+      heroBannerMobileImage: "https://cdn.example.test/hero-mobile.jpg",
       heroBannerTitle: "Readable hero",
       heroBannerHeight: "large" as const,
+      heroBannerFocalPointX: 72,
+      heroBannerFocalPointY: 38,
     };
     const props = {
       config: heroConfig,
@@ -84,6 +87,8 @@ describe("StorefrontHome", () => {
     expect(image?.getAttribute("loading")).toBe("eager");
     expect(image?.getAttribute("decoding")).toBe("async");
     expect(image?.getAttribute("fetchpriority")).toBe("high");
+    expect(image?.getAttribute("style")).toContain("object-position: 72% 38%");
+    expect(view.container.querySelector('source[media="(max-width: 767px)"]')?.getAttribute("srcset")).toBe("https://cdn.example.test/hero-mobile.jpg");
     expect(screen.getByRole("heading", { name: "Readable hero" }).style.color).toBe("rgb(255, 255, 255)");
     expect(screen.getByRole("heading", { name: "Readable hero" }).style.textShadow).not.toBe("");
   });
@@ -142,6 +147,45 @@ describe("StorefrontHome", () => {
     const discovery = document.querySelector("[data-elegant-discovery]");
     expect(discovery?.textContent).not.toMatch(/YER|ر\.س/);
     expect(discovery?.querySelector('button[aria-label*="إضافة"]')).toBeNull();
+  });
+
+  it("routes the Elegant intro CTA through its saved hero target", () => {
+    const onOpenMarketingTarget = vi.fn();
+    render(
+      <StorefrontHome
+        config={{
+          ...ELEGANT_PRESET,
+          heroBannerButtonText: "تسوق العطور",
+          heroBannerTargetType: "category",
+          heroBannerTargetValue: "عطور",
+          marketingBlocks: [{
+            id: "00000000-0000-4000-8000-000000000001",
+            placement: "editorial_story",
+            position: 1,
+            enabled: true,
+            contentType: "category",
+            title: "قصة العطور",
+            ctaLabel: "افتح القصة",
+            imageUrl: "/api/store-assets/tenant/00000000-0000-4000-8000-000000000011",
+            altText: "قصة عطور",
+            targetType: "products",
+            disclosure: "none",
+          }],
+        }}
+        isElegant
+        primaryColor="#7a2e2e"
+        secondaryColor="#171717"
+        onOpenProducts={vi.fn()}
+        onOpenAbout={vi.fn()}
+        onSelectCategory={vi.fn()}
+        onOpenProduct={vi.fn()}
+        onAddProduct={vi.fn()}
+        onOpenMarketingTarget={onOpenMarketingTarget}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "تسوق العطور" }));
+    expect(onOpenMarketingTarget).toHaveBeenCalledWith("category", "عطور");
   });
 
   it("renders the server-owned Tech Bento projection without consuming Elegant stories", () => {

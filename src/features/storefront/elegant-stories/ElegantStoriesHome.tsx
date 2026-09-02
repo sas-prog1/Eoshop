@@ -8,6 +8,7 @@ interface Props {
   model: ElegantStoriesHomeViewModel;
   tokens?: Partial<ElegantStoriesThemeTokens>;
   onOpenStory: (story: ElegantStoryViewModel) => void;
+  onOpenIntro: (intro: ElegantStoriesHomeViewModel["intro"]) => void;
   onOpenDiscovery: (item: ElegantStoriesHomeViewModel["discoveryItems"][number]) => void;
   onOpenDiscoveryAll: () => void;
 }
@@ -21,7 +22,7 @@ type ElegantCssProperties = React.CSSProperties & {
   "--elegant-accent": string;
 };
 
-export default function ElegantStoriesHome({ model, tokens, onOpenStory, onOpenDiscovery, onOpenDiscoveryAll }: Props) {
+export default function ElegantStoriesHome({ model, tokens, onOpenStory, onOpenIntro, onOpenDiscovery, onOpenDiscoveryAll }: Props) {
   const resolvedTokens = { ...DEFAULT_ELEGANT_STORIES_TOKENS, ...tokens };
   const style: ElegantCssProperties = {
     "--elegant-background": resolvedTokens.background,
@@ -34,7 +35,7 @@ export default function ElegantStoriesHome({ model, tokens, onOpenStory, onOpenD
 
   return (
     <main className="elegant-stories-home" data-elegant-stories-home dir="rtl" style={style}>
-      <ElegantEditorialHero intro={model.intro} stories={model.stories} onOpenStory={onOpenStory} onOpenDiscovery={onOpenDiscoveryAll} />
+      <ElegantEditorialHero intro={model.intro} stories={model.stories} onOpenStory={onOpenStory} onOpenIntro={() => onOpenIntro(model.intro)} onOpenDiscovery={onOpenDiscoveryAll} />
 
       <ElegantDiscoveryRail items={model.discoveryItems} onOpen={onOpenDiscovery} onOpenAll={onOpenDiscoveryAll} />
     </main>

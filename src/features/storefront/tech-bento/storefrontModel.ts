@@ -46,6 +46,8 @@ function tileFromBlock(block: StorefrontMarketingBlock): TechMarketingTileViewMo
 export function techBentoHomeModel(config: StoreConfig, now = new Date()): TechBentoHomeViewModel {
   const heroTargetType = config.heroBannerTargetType ?? "products";
   const heroTargetValue = heroTargetType === "products" ? undefined : config.heroBannerTargetValue?.trim() || undefined;
+  const desktopHeroImage = config.heroBannerImage?.trim() || config.heroBannerMobileImage?.trim() || undefined;
+  const mobileHeroImage = config.heroBannerMobileImage?.trim() || desktopHeroImage;
   const categories = Array.from(new Set(
     config.products
       .filter((product) => product.status === "published")
@@ -84,8 +86,8 @@ export function techBentoHomeModel(config: StoreConfig, now = new Date()): TechB
       subtitle: config.heroBannerSubtitle?.trim() || config.slogan?.trim() || undefined,
       badge: config.heroBannerBadge?.trim() || undefined,
       ctaLabel: config.heroBannerButtonText?.trim() || "استكشف المنتجات",
-      imageUrl: config.showHeroBanner === true ? config.heroBannerImage?.trim() || undefined : undefined,
-      mobileImageUrl: config.showHeroBanner === true ? config.heroBannerMobileImage?.trim() || undefined : undefined,
+      imageUrl: config.showHeroBanner === true ? desktopHeroImage : undefined,
+      mobileImageUrl: config.showHeroBanner === true ? mobileHeroImage : undefined,
       height: config.heroBannerHeight ?? "medium",
       overlayOpacity: clampPercentage(config.heroBannerOverlayOpacity, 42),
       focalPointX: clampPercentage(config.heroBannerFocalPointX, 50),

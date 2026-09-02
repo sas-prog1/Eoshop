@@ -7,7 +7,7 @@ interface Props {
   isElegant: boolean;
   primaryColor: string;
   secondaryColor: string;
-  onOpenProducts: () => void;
+  onOpen: () => void;
 }
 
 const heroHeightClass: Record<NonNullable<StoreConfig["heroBannerHeight"]>, string> = {
@@ -16,9 +16,11 @@ const heroHeightClass: Record<NonNullable<StoreConfig["heroBannerHeight"]>, stri
   large: "min-h-[500px] md:min-h-[600px]",
 };
 
-export default function StorefrontHero({ config, isElegant, primaryColor, secondaryColor, onOpenProducts }: Props) {
+export default function StorefrontHero({ config, isElegant, primaryColor, secondaryColor, onOpen }: Props) {
   const height = config.heroBannerHeight ?? "medium";
-  const imageVisible = config.showHeroBanner === true && Boolean(config.heroBannerImage?.trim());
+  const desktopImage = config.heroBannerImage?.trim() || config.heroBannerMobileImage?.trim();
+  const mobileImage = config.heroBannerMobileImage?.trim() || desktopImage;
+  const imageVisible = config.showHeroBanner === true && Boolean(desktopImage);
   const overlayOpacity = Math.min(100, Math.max(0, config.heroBannerOverlayOpacity ?? 35)) / 100;
   const cardBackground = config.cardBgColor || "#FFFFFF";
   const borderColor = config.borderColor || (isElegant ? "#F2EAE1" : "#1E293B");
@@ -33,16 +35,20 @@ export default function StorefrontHero({ config, isElegant, primaryColor, second
       style={{ backgroundColor: isElegant ? cardBackground : "#020617", borderColor }}
     >
       {imageVisible && (
-        <img
-          src={config.heroBannerImage}
-          alt=""
-          loading="eager"
-          decoding="async"
-          fetchPriority="high"
-          sizes="100vw"
-          className="absolute inset-0 h-full w-full object-cover"
-          referrerPolicy="no-referrer"
-        />
+        <picture className="absolute inset-0 h-full w-full">
+          {mobileImage ? <source media="(max-width: 767px)" srcSet={mobileImage} /> : null}
+          <img
+            src={desktopImage}
+            alt=""
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+            sizes="100vw"
+            className="h-full w-full object-cover"
+            style={{ objectPosition: `${config.heroBannerFocalPointX ?? 50}% ${config.heroBannerFocalPointY ?? 50}%` }}
+            referrerPolicy="no-referrer"
+          />
+        </picture>
       )}
       {imageVisible && <div className="absolute inset-0 bg-black" style={{ opacity: overlayOpacity }} />}
       {imageVisible && <div className="absolute inset-0 bg-gradient-to-l from-slate-950/90 via-slate-950/65 to-slate-950/30" />}
@@ -70,7 +76,7 @@ export default function StorefrontHero({ config, isElegant, primaryColor, second
           </p>
           <button
             type="button"
-            onClick={onOpenProducts}
+            onClick={onOpen}
             className="min-h-11 rounded-xl px-6 py-3 text-sm font-black shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 motion-reduce:transform-none"
             style={{ backgroundColor: primaryColor, color: readableForeground(primaryColor), outlineColor: primaryColor }}
           >
