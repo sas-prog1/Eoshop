@@ -356,16 +356,25 @@ export default function MerchantOnboardingPage({ user, requestedStep, onSessionE
 
         {step === "design" && (
           <section className="space-y-6">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-              <SectionTitle icon={LayoutTemplate} title="اختر قالبًا وشاهد النتيجة" text="القوالب نقاط بداية آمنة. التغييرات التي تجريها هنا تُحفظ داخل مسودة متجرك قبل الانتقال." />
-              <div className="mt-7 grid gap-5 lg:grid-cols-2">
-                {ONBOARDING_TEMPLATES.map((template) => <TemplateCard key={template.key} template={template} selected={theme === template.key} onSelect={() => selectTemplate(template.key)} />)}
-              </div>
+            <div className="grid items-start gap-6 xl:grid-cols-[390px_minmax(0,1fr)]">
+              <aside className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:sticky xl:top-5">
+                <SectionTitle icon={LayoutTemplate} title="اختر القالب الحقيقي" text="كل خيار أدناه يشغّل واجهته الفعلية في المعاينة المقابلة، وليس رسمًا تقريبيًا للقالب." compact />
+                <div className="mt-6 space-y-4" aria-label="قوالب المتاجر المتاحة">
+                  {ONBOARDING_TEMPLATES.map((template) => <TemplateCard key={template.key} template={template} selected={theme === template.key} onSelect={() => selectTemplate(template.key)} />)}
+                </div>
+                <div className="mt-5 rounded-2xl border border-sky-100 bg-sky-50 p-4 text-xs leading-6 text-sky-950">
+                  <p className="font-black">المعروض الآن: {selectedTemplate.layoutLabel}</p>
+                  <p className="mt-1 text-sky-800">المحتوى والصور داخل المعاينة تجريبية فقط، بينما بنية القالب والتنقل حقيقيان.</p>
+                </div>
+              </aside>
+              <React.Fragment key={`design-${selectedTemplate.key}`}>
+                <OnboardingStorePreview config={previewConfig} />
+              </React.Fragment>
             </div>
 
-            <div className="grid items-start gap-6 xl:grid-cols-[390px_minmax(0,1fr)]">
-              <aside className="space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-5">
-                <SectionTitle icon={Palette} title="خصص هوية متجرك" text="غيّر العناصر الأساسية وشاهد النتيجة فورًا." compact />
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <SectionTitle icon={Palette} title="خصص هوية متجرك" text="غيّر العناصر الأساسية وشاهد النتيجة فورًا في المعاينة الحقيقية أعلاه." compact />
+              <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                 <label className="block text-sm font-bold">الشعار النصي أو الرمز<input value={config.logoIcon} onChange={(event) => updateConfig("logoIcon", event.target.value.slice(0, 8))} maxLength={8} className={inputClass} /></label>
                 <label className="block text-sm font-bold">العبارة التعريفية<input value={config.slogan} onChange={(event) => updateConfig("slogan", event.target.value)} maxLength={160} className={inputClass} /></label>
                 <label className="block text-sm font-bold">شريط الإعلان<input value={config.bannerText} onChange={(event) => updateConfig("bannerText", event.target.value)} maxLength={180} className={inputClass} /></label>
@@ -376,11 +385,8 @@ export default function MerchantOnboardingPage({ user, requestedStep, onSessionE
                 <label className="block text-sm font-bold">الخط<select value={config.fontFamily} onChange={(event) => updateConfig("fontFamily", event.target.value)} className={inputClass}>{fontOptions.map((font) => <option key={font}>{font}</option>)}</select></label>
                 <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 p-4 text-sm font-bold"><span>إظهار واجهة ترحيبية كبيرة</span><input type="checkbox" checked={config.showHeroBanner === true} onChange={(event) => updateConfig("showHeroBanner", event.target.checked)} className="h-5 w-5 accent-sky-600" /></label>
                 {config.showHeroBanner && <label className="block text-sm font-bold">عنوان الواجهة الترحيبية<input value={config.heroBannerTitle ?? ""} onChange={(event) => updateConfig("heroBannerTitle", event.target.value)} maxLength={180} className={inputClass} /></label>}
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-6 text-amber-900">إضافة المنتجات ورفع ملفات الشعار وإعداد الدفع تتم بعد تجهيز المتجر، حتى تبقى البيانات مرتبطة بقاعدة متجر جاهزة.</div>
-              </aside>
-              <React.Fragment key={`design-${selectedTemplate.key}`}>
-                <OnboardingStorePreview config={previewConfig} />
-              </React.Fragment>
+              </div>
+              <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-6 text-amber-900">إضافة المنتجات ورفع ملفات الشعار وإعداد الدفع تتم بعد تجهيز المتجر، حتى تبقى البيانات مرتبطة بقاعدة متجر جاهزة.</div>
             </div>
 
             <div className="flex flex-wrap gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -434,18 +440,19 @@ export default function MerchantOnboardingPage({ user, requestedStep, onSessionE
 
 function TemplateCard({ template, selected, onSelect }: { key?: React.Key; template: (typeof ONBOARDING_TEMPLATES)[number]; selected: boolean; onSelect: () => void }) {
   return (
-    <button type="button" onClick={onSelect} aria-pressed={selected} className={`overflow-hidden rounded-3xl border-2 text-right transition ${selected ? "border-sky-500 ring-4 ring-sky-100" : "border-slate-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg"}`}>
-      <div className="p-4" style={{ backgroundColor: template.appearance.bgColor }}>
-        <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: template.appearance.borderColor }}>
-          <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: template.appearance.secondaryColor, color: "white" }}><span className="text-lg">{template.appearance.logoIcon}</span><span className="text-[9px] font-black">{template.name}</span><span className="h-1.5 w-8 rounded-full bg-white/40" /></div>
-          <div className="m-2 rounded-xl p-3 text-white" style={{ background: `linear-gradient(135deg, ${template.appearance.primaryColor}, ${template.appearance.secondaryColor})` }}><p className="text-xs font-black">{template.appearance.heroBannerTitle || template.appearance.slogan}</p><div className="mt-2 h-1.5 w-20 rounded-full bg-white/50" /></div>
-          <div className="grid grid-cols-3 gap-2 p-2">{template.previewProducts.map((color) => <span key={color} className="h-12 rounded-lg" style={{ backgroundColor: color }} />)}</div>
+    <button type="button" onClick={onSelect} aria-pressed={selected} className={`w-full rounded-2xl border-2 p-4 text-right transition ${selected ? "border-sky-500 bg-sky-50 ring-4 ring-sky-100" : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span className={`text-[10px] font-black tracking-[0.08em] ${selected ? "text-sky-700" : "text-slate-500"}`}>{template.layoutLabel}</span>
+          <div className="mt-1 flex flex-wrap items-center gap-2"><h3 className="font-black text-slate-950">{template.name}</h3><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">{template.category}</span></div>
         </div>
+        <span className={`rounded-full p-1.5 ${selected ? "bg-sky-600 text-white" : "border border-slate-200 text-slate-400"}`}>{selected ? <Check className="h-4 w-4" /> : <LayoutTemplate className="h-4 w-4" />}</span>
       </div>
-      <div className="flex items-start justify-between gap-3 p-5">
-        <div><div className="flex items-center gap-2"><h3 className="font-black">{template.name}</h3><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">{template.category}</span></div><p className="mt-2 text-xs leading-6 text-slate-500">{template.description}</p><p className="mt-2 text-[11px] font-bold text-sky-700">مناسب لـ: {template.bestFor}</p></div>
-        {selected && <span className="rounded-full bg-sky-600 p-1.5 text-white"><Check className="h-4 w-4" /></span>}
-      </div>
+      <p className="mt-3 text-xs leading-6 text-slate-600">{template.description}</p>
+      <span role="list" className="mt-3 block space-y-1.5 border-t border-slate-200 pt-3 text-[11px] font-bold text-slate-700">
+        {template.layoutFeatures.map((feature) => <span role="listitem" key={feature} className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-500" />{feature}</span>)}
+      </span>
+      <p className="mt-3 text-[10px] font-bold leading-5 text-slate-500">مناسب لـ: {template.bestFor}</p>
     </button>
   );
 }

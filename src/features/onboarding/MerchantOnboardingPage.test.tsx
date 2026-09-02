@@ -199,7 +199,7 @@ describe("MerchantOnboardingPage", () => {
 
     render(<UiAdaptersProvider adapters={adapters}><MerchantOnboardingPage user={user} requestedStep="review" onSessionExpired={vi.fn()} /></UiAdaptersProvider>);
 
-    expect(await screen.findByRole("heading", { name: "اختر قالبًا وشاهد النتيجة" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "اختر القالب الحقيقي" })).toBeTruthy();
     expect(window.location.pathname).toBe("/app/new/design");
     await userEvent.click(screen.getByRole("button", { name: /التقنية والابتكار/ }));
     const slogan = screen.getByRole("textbox", { name: "العبارة التعريفية" });
@@ -214,6 +214,8 @@ describe("MerchantOnboardingPage", () => {
     }), expect.any(AbortSignal)));
     expect(saveDesign.mock.calls[0][0].config).not.toHaveProperty("products");
     expect(saveDesign.mock.calls[0][0].config).not.toHaveProperty("currency");
+    expect(saveDesign.mock.calls[0][0].config).not.toHaveProperty("marketingBlocks");
+    expect(saveDesign.mock.calls[0][0].config).not.toHaveProperty("heroBannerImage");
     expect(await screen.findByRole("heading", { name: "راجع الطلب قبل الإرسال" })).toBeTruthy();
     expect(window.location.pathname).toBe("/app/new/review");
   }, 30_000);
@@ -235,6 +237,31 @@ describe("MerchantOnboardingPage", () => {
 
     expect((await screen.findAllByText("سماعة لاسلكية")).length).toBeGreaterThan(0);
     expect(screen.queryByText("عطر ليالي صنعاء")).toBeNull();
+  }, 30_000);
+
+  it("shows each real storefront composition during template selection and supports a full preview", async () => {
+    window.history.replaceState({}, "", "/app/new/design");
+    const adapters = createFakeUiAdapters({
+      provisioning: { recoverCommittedSubmission: vi.fn().mockResolvedValue(null), currentDraft: vi.fn().mockResolvedValue(businessDraft) },
+      plans: { list: vi.fn().mockResolvedValue([starter]) },
+    });
+
+    const view = render(<UiAdaptersProvider adapters={adapters}><MerchantOnboardingPage user={user} requestedStep="design" onSessionExpired={vi.fn()} /></UiAdaptersProvider>);
+
+    expect(await screen.findByRole("heading", { name: "اختر القالب الحقيقي" })).toBeTruthy();
+    expect(view.container.querySelector('[data-elegant-story-count="5"]')).not.toBeNull();
+    expect(view.container.querySelectorAll("[data-elegant-discovery] [role=listitem]")).toHaveLength(6);
+
+    await userEvent.click(screen.getByRole("button", { name: /التقنية والابتكار/ }));
+    expect(await screen.findByText("المعروض الآن: Tech Bento")).toBeTruthy();
+    expect(view.container.querySelector('[data-tech-bento-count="5"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-tech-ad-count="2"]')).not.toBeNull();
+    expect(view.container.querySelectorAll("[data-tech-discovery-id]")).toHaveLength(10);
+
+    await userEvent.click(screen.getByRole("button", { name: "فتح المعاينة الكاملة" }));
+    expect(screen.getByRole("dialog", { name: "معاينة كاملة للمتجر" })).toBeTruthy();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "معاينة كاملة للمتجر" })).toBeNull();
   }, 30_000);
 
   it("starts a new draft even when the owner already has stores instead of imposing a UI-only one-store limit", async () => {
@@ -270,7 +297,7 @@ describe("MerchantOnboardingPage", () => {
       plans: { list: vi.fn().mockResolvedValue([starter]) },
     });
     render(<UiAdaptersProvider adapters={saveAdapters}><MerchantOnboardingPage user={user} requestedStep="design" onSessionExpired={saveExpired} /></UiAdaptersProvider>);
-    await screen.findByRole("heading", { name: "اختر قالبًا وشاهد النتيجة" });
+    await screen.findByRole("heading", { name: "اختر القالب الحقيقي" });
     await userEvent.click(screen.getByRole("button", { name: "حفظ التصميم والانتقال للمعاينة النهائية" }));
     await waitFor(() => expect(saveExpired).toHaveBeenCalledWith("/app/new/design"));
   });
