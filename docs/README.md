@@ -41,6 +41,7 @@
 - [WP 5.27.3A — Storefront navigation and checkout launch review](work-packages/WP-5.27.3A-storefront-launch-review.md)
 - [WP 5.27.3B — Elegant customization review](work-packages/WP-5.27.3B-elegant-customization-review.md)
 - [WP 5.27.3C — Tech Bento merchant customization closure](work-packages/WP-5.27.3C-tech-bento-customization.md)
+- [WP 5.27.4 — Real storefront template selection](work-packages/WP-5.27.4-onboarding-template-selection.md)
 
 ## Architecture decisions
 
