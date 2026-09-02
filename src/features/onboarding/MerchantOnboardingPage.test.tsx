@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UiAdaptersProvider } from "../../adapters/UiAdaptersContext";
 import { createFakeUiAdapters } from "../../adapters/testing/fakeUiAdapters";
-import type { StoreDraft, UserProfile } from "../../adapters/uiAdapters";
+import type { StoreApplicationDossier, StoreDraft, UserProfile } from "../../adapters/uiAdapters";
 import MerchantOnboardingPage from "./MerchantOnboardingPage";
 import { createTemplateConfig, ONBOARDING_TEMPLATES } from "./storeTemplates";
 import { ApiError } from "../../services/apiClient";
@@ -38,6 +38,16 @@ const businessDraft: StoreDraft = {
   handle: null,
   planKey: null,
   config: createTemplateConfig(ONBOARDING_TEMPLATES[0], "Guided Store"),
+  application: {
+    draftId: "draft-guided",
+    tenantId: null,
+    draftRevision: 1,
+    ready: true,
+    blockers: [],
+    requirements: [],
+    correctionRequest: null,
+    timeline: [],
+  },
   savedAt: null,
   submittedAt: null,
 };
@@ -104,6 +114,87 @@ describe("MerchantOnboardingPage", () => {
     expect(saveReview).not.toHaveBeenCalled();
     expect(submit).not.toHaveBeenCalled();
   });
+
+  it("keeps submission blocked until the server-owned dossier is complete and uses the upload revision", async () => {
+    const incompleteApplication: StoreApplicationDossier = {
+      draftId: businessDraft.id,
+      tenantId: null,
+      draftRevision: 3,
+      ready: false,
+      blockers: ["business_license"],
+      requirements: [{
+        key: "business_license",
+        label: "السجل أو الترخيص",
+        description: "مستند يثبت أهلية النشاط.",
+        uploadRequired: true,
+        allowExemption: false,
+        resolved: false,
+        evidence: null,
+      }],
+      correctionRequest: null,
+      timeline: [],
+    };
+    const reviewDraft: StoreDraft = {
+      ...businessDraft,
+      revision: 3,
+      onboardingStage: "review",
+      onboardingReadiness: { business: true, design: true, review: true, blockers: [] },
+      nextRequiredStep: "submit",
+      handle: "guided-ready",
+      planKey: "starter",
+      application: incompleteApplication,
+    };
+    const readyApplication = {
+      ...incompleteApplication,
+      draftRevision: 4,
+      ready: true,
+      blockers: [],
+      requirements: [{
+        ...incompleteApplication.requirements[0],
+        resolved: true,
+        evidence: {
+          id: "evidence-1",
+          resolution: "uploaded" as const,
+          reviewStatus: "pending" as const,
+          originalName: "license.pdf",
+          mimeType: "application/pdf",
+          byteSize: 128,
+          exemptionReason: null,
+          uploadedAt: "2026-09-02T10:00:00Z",
+          downloadUrl: "/api/merchant/evidence/evidence-1",
+        },
+      }],
+    };
+    const uploadApplicationEvidence = vi.fn().mockResolvedValue(readyApplication);
+    const savedReview: StoreDraft = {
+      ...reviewDraft,
+      revision: 5,
+      application: { ...readyApplication, draftRevision: 5 },
+    };
+    const saveReview = vi.fn().mockResolvedValue(savedReview);
+    const submit = vi.fn(() => new Promise<never>(() => undefined));
+    const adapters = createFakeUiAdapters({
+      provisioning: { recoverCommittedSubmission: vi.fn().mockResolvedValue(null), currentDraft: vi.fn().mockResolvedValue(reviewDraft), uploadApplicationEvidence, saveReview, submit },
+      plans: { list: vi.fn().mockResolvedValue([starter]), domainAvailability: vi.fn().mockResolvedValue({ handle: "guided-ready", domain: "guided-ready.eoshop.local", available: true }) },
+    });
+
+    render(<UiAdaptersProvider adapters={adapters}><MerchantOnboardingPage user={user} requestedStep="review" onSessionExpired={vi.fn()} /></UiAdaptersProvider>);
+    expect(await screen.findByRole("heading", { name: "وثائق طلب المتجر" })).toBeTruthy();
+    expect(await screen.findByText("متاح الآن: guided-ready.eoshop.local")).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("button", { name: "تأكيد التصميم وإرسال طلب المراجعة" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("أكمل وثائق طلب المتجر");
+    expect(saveReview).not.toHaveBeenCalled();
+
+    const file = new File(["license"], "license.pdf", { type: "application/pdf" });
+    await userEvent.upload(screen.getByLabelText("رفع مستند السجل أو الترخيص"), file);
+    await waitFor(() => expect(uploadApplicationEvidence).toHaveBeenCalledWith(businessDraft.id, "business_license", 3, file, expect.any(AbortSignal)));
+    expect(await screen.findByText("ملف الطلب مكتمل")).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("button", { name: "تأكيد التصميم وإرسال طلب المراجعة" }));
+    await waitFor(() => expect(saveReview).toHaveBeenCalledWith(expect.objectContaining({ expectedRevision: 4 }), expect.any(AbortSignal)));
+    expect(submit).toHaveBeenCalledOnce();
+  }, 30_000);
 
   it("invalidates a previous available-domain result while a changed handle is being checked", async () => {
     const designDraft: StoreDraft = {

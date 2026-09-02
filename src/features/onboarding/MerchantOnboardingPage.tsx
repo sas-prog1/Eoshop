@@ -13,10 +13,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useUiAdapters } from "../../adapters/UiAdaptersContext";
-import { isUiError, uiErrorMessage, type StoreDraft, type StorePlan, type UserProfile } from "../../adapters/uiAdapters";
+import { isUiError, uiErrorMessage, type StoreApplicationDossier, type StoreDraft, type StorePlan, type UserProfile } from "../../adapters/uiAdapters";
 import { storeOnboardingAppearance } from "../../contracts/storeOnboardingAppearance";
 import type { StoreConfig } from "../../types";
 import OnboardingStorePreview from "./OnboardingStorePreview";
+import StoreApplicationEvidencePanel from "./StoreApplicationEvidencePanel";
 import { createTemplateConfig, createTemplatePreviewConfig, ONBOARDING_TEMPLATES, type OnboardingTemplateKey } from "./storeTemplates";
 
 type Step = "business" | "design" | "review";
@@ -49,6 +50,7 @@ export default function MerchantOnboardingPage({ user, requestedStep, onSessionE
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
   const [pendingSubmission, setPendingSubmission] = useState(false);
+  const [evidenceBusy, setEvidenceBusy] = useState(false);
   const loadSequence = useRef(0);
   const operationSequence = useRef(0);
   const operationController = useRef<AbortController | null>(null);
@@ -94,8 +96,9 @@ export default function MerchantOnboardingPage({ user, requestedStep, onSessionE
     else if (!availability || availability.handle !== normalizedHandle) blockers.push("يجب التحقق من توفر عنوان المتجر قبل الإرسال.");
     else if (!availability.available) blockers.push("عنوان المتجر مستخدم؛ اختر عنوانًا مختلفًا.");
     if (!selectedPlan) blockers.push("اختر باقة متاحة قبل الإرسال.");
+    if (!draft?.application?.ready) blockers.push("أكمل وثائق طلب المتجر أو سجّل الإعفاءات المسموحة قبل الإرسال.");
     return blockers;
-  }, [availability, availabilityError, checking, normalizedHandle, pendingSubmission, selectedPlan]);
+  }, [availability, availabilityError, checking, draft?.application?.ready, normalizedHandle, pendingSubmission, selectedPlan]);
 
   const dirty = useMemo(() => {
     if (!draft) return storeName.trim() !== "";
@@ -276,9 +279,27 @@ export default function MerchantOnboardingPage({ user, requestedStep, onSessionE
     }
   };
 
+  const applyApplication = (application: StoreApplicationDossier) => {
+    setDraft((current) => current && current.id === application.draftId
+      ? { ...current, revision: application.draftRevision, application }
+      : current);
+    setError("");
+  };
+
+  const reloadDraftForEvidence = async () => {
+    const latest = await provisioning.currentDraft();
+    if (!latest || latest.id !== draft?.id) throw new Error("The current draft changed.");
+    applyDraft(latest);
+    setAvailability(null);
+  };
+
   const submit = async () => {
     if (!draft) {
       setError("لا توجد مسودة محفوظة يمكن إرسالها.");
+      return;
+    }
+    if (evidenceBusy) {
+      setError("انتظر حتى يكتمل رفع المستند الحالي قبل إرسال الطلب.");
       return;
     }
     if (!pendingSubmission && reviewBlockers.length > 0) {
@@ -418,6 +439,8 @@ export default function MerchantOnboardingPage({ user, requestedStep, onSessionE
                   {selectedPlan && <div className="mt-3 rounded-2xl bg-slate-50 p-4 text-xs leading-6 text-slate-600"><p className="font-black text-slate-900">{selectedPlan.name}</p><p>{selectedPlan.maxProducts === null ? "منتجات غير محدودة" : `حتى ${selectedPlan.maxProducts} منتجات`} — {selectedPlan.activationMode === "automatic" ? "تفعيل تلقائي بعد الموافقة" : "يتطلب تفعيل الإدارة"}</p>{selectedPlan.features.length > 0 && <ul className="mt-2 list-inside list-disc">{selectedPlan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>}</div>}
                 </div>
 
+                {draft?.application && <StoreApplicationEvidencePanel application={draft.application} disabled={saving || pendingSubmission} onUploadEvidence={(requirementKey, file, signal) => provisioning.uploadApplicationEvidence(draft.id, requirementKey, draft.revision, file, signal)} onDeclareExemption={(requirementKey, reason, signal) => provisioning.exemptApplicationRequirement(draft.id, requirementKey, draft.revision, reason, signal)} onApplicationChanged={applyApplication} onBusyChange={setEvidenceBusy} onReloadDraft={reloadDraftForEvidence} onSessionExpired={() => onSessionExpired(stepPath.review)} />}
+
                 {!pendingSubmission && <div aria-live="polite" className={`rounded-2xl border p-4 text-xs leading-6 ${reviewBlockers.length === 0 ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}><p className="font-black">{reviewBlockers.length === 0 ? "الطلب جاهز للإرسال" : "أكمل المطلوب قبل الإرسال"}</p>{reviewBlockers.length > 0 && <ul className="mt-2 list-inside list-disc">{reviewBlockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul>}</div>}
                 <div className="flex gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-xs leading-6 text-indigo-900"><ShieldCheck className="h-5 w-5 shrink-0" /><p>الإرسال ينشئ طلب مراجعة فقط. بعد الموافقة يبدأ تجهيز قاعدة المتجر، ثم يظهر لك إجراء النشر والرابط من بوابة التاجر.</p></div>
                 {pendingSubmission && <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-bold text-amber-900">نتيجة المحاولة السابقة غير مؤكدة. الضغط مرة أخرى يستعيد العملية نفسها دون إنشاء متجر مكرر.</p>}
@@ -429,7 +452,7 @@ export default function MerchantOnboardingPage({ user, requestedStep, onSessionE
 
             <div className="flex flex-wrap gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <button type="button" disabled={saving || pendingSubmission} onClick={() => navigate("design")} className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold">السابق</button>
-              <button type="button" disabled={saving} onClick={() => void submit()} className="flex-1 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white disabled:opacity-50">{saving ? "جاري الحفظ والإرسال..." : pendingSubmission ? "استعادة نتيجة الإرسال" : "تأكيد التصميم وإرسال طلب المراجعة"}</button>
+              <button type="button" disabled={saving || evidenceBusy} onClick={() => void submit()} className="flex-1 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white disabled:opacity-50">{saving ? "جاري الحفظ والإرسال..." : pendingSubmission ? "استعادة نتيجة الإرسال" : evidenceBusy ? "جاري رفع المستند..." : "تأكيد التصميم وإرسال طلب المراجعة"}</button>
             </div>
           </section>
         )}

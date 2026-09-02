@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, Clock3, FileText, Globe, RefreshCw, ShieldCheck, UploadCloud, X, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock3, Globe, RefreshCw, ShieldCheck, X, XCircle } from "lucide-react";
 import { useUiAdapters } from "../adapters/UiAdaptersContext";
 import { isUiError, uiErrorMessage, type StoreApplicationDossier, type StoreDraft, type StorePlan, type StoreSubmission } from "../adapters/uiAdapters";
+import StoreApplicationEvidencePanel from "../features/onboarding/StoreApplicationEvidencePanel";
 
 interface DomainSetupModalProps {
   isOpen: boolean;
@@ -57,8 +58,7 @@ export default function DomainSetupModal({
   const [draftConflict, setDraftConflict] = useState(false);
   const [preparedDraft, setPreparedDraft] = useState<StoreDraft | null>(null);
   const [application, setApplication] = useState<StoreApplicationDossier | null>(null);
-  const [evidenceBusy, setEvidenceBusy] = useState<string | null>(null);
-  const [exemptionReasons, setExemptionReasons] = useState<Record<string, string>>({});
+  const [evidenceBusy, setEvidenceBusy] = useState(false);
   const plansRequest = useRef(0);
   const availabilityRequest = useRef(0);
 
@@ -96,8 +96,7 @@ export default function DomainSetupModal({
     setDraftConflict(false);
     setPreparedDraft(null);
     setApplication(draft?.application ?? null);
-    setEvidenceBusy(null);
-    setExemptionReasons({});
+    setEvidenceBusy(false);
   }, [isOpen]);
 
   useEffect(() => {
@@ -222,35 +221,13 @@ export default function DomainSetupModal({
     });
   };
 
-  const uploadEvidence = async (requirementKey: string, file: File) => {
+  const reloadPreparedDraft = async () => {
     if (!preparedDraft) return;
-    setError("");
-    setEvidenceBusy(requirementKey);
-    try {
-      applyApplication(await provisioning.uploadApplicationEvidence(preparedDraft.id, requirementKey, preparedDraft.revision, file));
-    } catch (caught) {
-      setError(uiErrorMessage(caught, "تعذر رفع المستند. حاول مرة أخرى."));
-    } finally {
-      setEvidenceBusy(null);
-    }
-  };
-
-  const declareExemption = async (requirementKey: string) => {
-    if (!preparedDraft) return;
-    const reason = exemptionReasons[requirementKey]?.trim() ?? "";
-    if (reason.length < 10) {
-      setError("اكتب سبب إعفاء واضحًا من 10 أحرف على الأقل.");
-      return;
-    }
-    setError("");
-    setEvidenceBusy(requirementKey);
-    try {
-      applyApplication(await provisioning.exemptApplicationRequirement(preparedDraft.id, requirementKey, preparedDraft.revision, reason));
-    } catch (caught) {
-      setError(uiErrorMessage(caught, "تعذر تسجيل إفادة الإعفاء."));
-    } finally {
-      setEvidenceBusy(null);
-    }
+    const latest = await provisioning.currentDraft();
+    if (!latest || latest.id !== preparedDraft.id) throw new Error("The current draft changed.");
+    setPreparedDraft(latest);
+    setApplication(latest.application ?? null);
+    onDraftChanged?.(latest);
   };
 
   return (
@@ -334,75 +311,9 @@ export default function DomainSetupModal({
             </div>
           )}
 
-          {preparedDraft && application && (
-            <section className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h4 className="flex items-center gap-2 text-sm font-black text-slate-950"><FileText className="h-5 w-5 text-indigo-600" /> وثائق طلب المتجر</h4>
-                  <p className="mt-1 text-xs leading-6 text-slate-600">المتطلبات يحددها الخادم حسب نوع النشاط. الملفات خاصة، ولا تُعرض في رابط المتجر العام.</p>
-                </div>
-                <span className={`rounded-full border px-3 py-1 text-xs font-black ${application.ready ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
-                  {application.ready ? "ملف الطلب مكتمل" : `${application.blockers.length} متطلب غير مكتمل`}
-                </span>
-              </div>
+          {preparedDraft && application && <StoreApplicationEvidencePanel application={application} disabled={submitting} onUploadEvidence={(requirementKey, file, signal) => provisioning.uploadApplicationEvidence(preparedDraft.id, requirementKey, preparedDraft.revision, file, signal)} onDeclareExemption={(requirementKey, reason, signal) => provisioning.exemptApplicationRequirement(preparedDraft.id, requirementKey, preparedDraft.revision, reason, signal)} onApplicationChanged={applyApplication} onBusyChange={setEvidenceBusy} onReloadDraft={reloadPreparedDraft} />}
 
-              {application.correctionRequest && (
-                <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-950">
-                  <p className="font-black">طلب استكمال من إدارة المنصة</p>
-                  <p className="mt-2 leading-6">{application.correctionRequest.reason}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">{application.correctionRequest.requestedFieldLabels.map((label) => <span key={label} className="rounded-full bg-white px-3 py-1 font-bold">{label}</span>)}</div>
-                </div>
-              )}
-
-              <div className="space-y-3">
-                {application.requirements.map((requirement) => (
-                  <article key={requirement.key} className={`rounded-2xl border bg-white p-4 ${requirement.resolved ? "border-emerald-200" : "border-slate-200"}`}>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h5 className="flex items-center gap-2 text-sm font-black text-slate-900">{requirement.resolved && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}{requirement.label}</h5>
-                        <p className="mt-1 text-xs leading-6 text-slate-500">{requirement.description}</p>
-                        {requirement.evidence && <p className="mt-2 text-[11px] font-bold text-emerald-700">{requirement.evidence.resolution === "uploaded" ? `مرفوع: ${requirement.evidence.originalName ?? "مستند"}` : "تم تسجيل إفادة إعفاء صريحة"}</p>}
-                      </div>
-                      <label className={`inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white ${evidenceBusy ? "pointer-events-none opacity-50" : ""}`}>
-                        {evidenceBusy === requirement.key ? <RefreshCw className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-                        {requirement.evidence?.resolution === "uploaded" ? "استبدال المستند" : "رفع المستند"}
-                        <input
-                          type="file"
-                          accept="application/pdf,image/jpeg,image/png"
-                          className="sr-only"
-                          disabled={evidenceBusy !== null}
-                          onChange={(event) => {
-                            const file = event.currentTarget.files?.[0];
-                            event.currentTarget.value = "";
-                            if (file) void uploadEvidence(requirement.key, file);
-                          }}
-                        />
-                      </label>
-                    </div>
-                    {requirement.allowExemption && (
-                      <div className="mt-3 grid gap-2 border-t border-slate-100 pt-3 sm:grid-cols-[1fr_auto]">
-                        <input
-                          value={exemptionReasons[requirement.key] ?? requirement.evidence?.exemptionReason ?? ""}
-                          onChange={(event) => setExemptionReasons((current) => ({ ...current, [requirement.key]: event.target.value }))}
-                          placeholder="سبب عدم توفر المستند حاليًا (إفادة صريحة)"
-                          maxLength={1000}
-                          className="rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-amber-500"
-                        />
-                        <button type="button" disabled={evidenceBusy !== null} onClick={() => void declareExemption(requirement.key)} className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900 disabled:opacity-50">تسجيل الإعفاء</button>
-                      </div>
-                    )}
-                  </article>
-                ))}
-              </div>
-
-              <div className="rounded-2xl bg-white p-4">
-                <h5 className="text-xs font-black text-slate-900">سجل الطلب</h5>
-                <ol className="mt-3 space-y-2">{application.timeline.slice(-5).reverse().map((item) => <li key={item.id} className="flex items-start gap-2 text-[11px] leading-5 text-slate-600"><Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" /><span>{item.message}</span></li>)}</ol>
-              </div>
-            </section>
-          )}
-
-          <button disabled={submitting || evidenceBusy !== null || loadingPlans || (!preparedDraft && (!availability?.available || !plan)) || Boolean(preparedDraft && !application?.ready)} type="submit" className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-sky-600 to-indigo-700 px-5 py-4 text-sm font-black text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50">
+          <button disabled={submitting || evidenceBusy || loadingPlans || (!preparedDraft && (!availability?.available || !plan)) || Boolean(preparedDraft && !application?.ready)} type="submit" className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-sky-600 to-indigo-700 px-5 py-4 text-sm font-black text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50">
             {submitting && <RefreshCw className="h-5 w-5 animate-spin" />}
             {submitting ? "جارٍ حفظ العملية بأمان…" : preparedDraft ? "إرسال ملف الطلب للمراجعة" : "حفظ العنوان والباقة والانتقال للوثائق"}
           </button>
