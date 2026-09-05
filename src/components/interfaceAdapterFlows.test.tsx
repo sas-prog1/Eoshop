@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
@@ -192,6 +192,36 @@ describe("adapter-backed interface flows", () => {
 
     expect(await screen.findByRole("button", { name: "حفظ التعديلات" })).toBeTruthy();
     expect(window.location.pathname).toBe(`/app/stores/${submission.id}/${section}`);
+  }, 15_000);
+
+  it("presents the store setup shell with concise actions and persistent section navigation", async () => {
+    const user = userEvent.setup();
+    await openRestoredBuilder(appAdapters(vi.fn()), user);
+
+    expect(screen.getByRole("heading", { name: /تهيئة متجري/ })).toBeTruthy();
+    expect(screen.getByText("مساحة إعداد المتجر")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "معلومات المتجر" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("products-tab")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "الدفع والتوصيل" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "حفظ التعديلات" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "توسيع المعاينة" })).toBeTruthy();
+    const expandedPreview = screen.getByRole("button", { name: "معاينة مكبّرة" });
+    expect(expandedPreview).toBeTruthy();
+    expect(screen.getByRole("button", { name: "حفظ والعودة" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /وضع العميل/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "شاشة كاملة" })).toBeNull();
+
+    const sectionNavigation = screen.getByRole("navigation", { name: "أقسام تهيئة المتجر" });
+    await user.click(within(sectionNavigation).getByRole("button", { name: "الدفع والتوصيل" }));
+    expect(window.location.pathname).toBe(`/app/stores/${submission.id}/checkout`);
+    await user.click(within(sectionNavigation).getByRole("button", { name: "الصفحات" }));
+    expect(window.location.pathname).toBe(`/app/stores/${submission.id}/pages`);
+
+    await user.click(expandedPreview);
+    expect(screen.getByRole("dialog", { name: /معاينة متجر/ })).toBeTruthy();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /معاينة متجر/ })).toBeNull());
+    expect(document.activeElement).toBe(expandedPreview);
   }, 15_000);
 
   it("shows submitted stores without waiting for a hanging draft recovery request", async () => {
@@ -581,7 +611,7 @@ describe("adapter-backed interface flows", () => {
     );
 
     await user.type(screen.getByPlaceholderText(/بخور العود الأزرق/), "فكرة الحملة");
-    await user.click(screen.getByRole("button", { name: /اقترح لي نصوصاً إبداعية/ }));
+    await user.click(screen.getByRole("button", { name: "إنشاء مقترحات" }));
 
     await waitFor(() => expect(generateStoreIdeas).toHaveBeenCalledTimes(1));
     expect(await screen.findByText(/شعار من الخادم/)).toBeTruthy();
@@ -612,8 +642,8 @@ describe("adapter-backed interface flows", () => {
     );
 
     await user.type(screen.getByPlaceholderText(/بخور العود الأزرق/), "فكرة مؤجلة");
-    await user.click(screen.getByRole("button", { name: /اقترح لي نصوصاً إبداعية/ }));
-    const loadingButton = screen.getByRole("button", { name: "جاري تفعيل الإبداع..." });
+    await user.click(screen.getByRole("button", { name: "إنشاء مقترحات" }));
+    const loadingButton = screen.getByRole("button", { name: "جارٍ إنشاء المقترحات…" });
     expect((loadingButton as HTMLButtonElement).disabled).toBe(true);
     await user.click(loadingButton);
     expect(generateStoreIdeas).toHaveBeenCalledTimes(1);
@@ -652,7 +682,7 @@ describe("adapter-backed interface flows", () => {
     );
 
     await user.type(screen.getByPlaceholderText(/بخور العود الأزرق/), "فكرة");
-    await user.click(screen.getByRole("button", { name: /اقترح لي نصوصاً إبداعية/ }));
+    await user.click(screen.getByRole("button", { name: "إنشاء مقترحات" }));
     expect(await screen.findByText(/التميز يبدأ من الاختيار الصحيح لهويتك/)).toBeTruthy();
   });
 
@@ -676,7 +706,7 @@ describe("adapter-backed interface flows", () => {
       createFakeUiAdapters(),
     );
 
-    await user.click(screen.getByRole("button", { name: /تم الانتهاء من التخصيص/ }));
+    await user.click(screen.getByRole("button", { name: "متابعة إلى العنوان" }));
     expect(setActiveTab).toHaveBeenCalledWith("export");
   });
 
@@ -703,7 +733,7 @@ describe("adapter-backed interface flows", () => {
       createFakeUiAdapters(),
     );
 
-    await user.click(screen.getByRole("button", { name: /تم الانتهاء من التخصيص/ }));
+    await user.click(screen.getByRole("button", { name: "حفظ والعودة" }));
     expect(onCompleteCustomization).toHaveBeenCalledOnce();
     expect(onOpenDomainModal).not.toHaveBeenCalled();
   });
@@ -907,7 +937,7 @@ describe("adapter-backed interface flows", () => {
 
     await user.click(screen.getByTestId("save-workspace"));
     await waitFor(() => expect(save).toHaveBeenNthCalledWith(2, submission.id, 7, 3, expect.any(Object), [persistedId]));
-    expect(await screen.findByText(/تم حفظ إعدادات المتجر والمنتجات/)).toBeTruthy();
+    expect(await screen.findByText("تم حفظ تغييرات المتجر.")).toBeTruthy();
   }, 15_000);
 
   it("removes duplicate operational tabs and guards the dirty inventory handoff", async () => {

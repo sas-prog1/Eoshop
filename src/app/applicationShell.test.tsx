@@ -140,7 +140,7 @@ describe("application shell boundaries", () => {
     expect(screen.getByText('"مسودتي"')).toBeTruthy();
     expect(screen.getByText('"نسخة الخادم"')).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "حفظ لقطتي كمسودة محلية" }));
-    await user.click(screen.getByRole("button", { name: "تجاهل القيم المتعارضة" }));
+    await user.click(screen.getByRole("button", { name: "الاحتفاظ بنسخة الخادم" }));
     expect(props.archiveConflictDraft).toHaveBeenCalledTimes(1);
     expect(props.discardConflictReview).toHaveBeenCalledTimes(1);
   });
@@ -152,7 +152,7 @@ describe("application shell boundaries", () => {
 
     render(<WorkspaceRecoveryOverlays {...props} localDraft={localDraft} />);
 
-    await user.click(screen.getByRole("button", { name: "استيراد المسودة إلى المتجر" }));
+    await user.click(screen.getByRole("button", { name: "تطبيق المسودة في المحرر" }));
     await user.click(screen.getByRole("button", { name: "تجاهل المسودة" }));
     expect(props.importLocalDraft).toHaveBeenCalledWith(localDraft);
     expect(props.discardLocalDraft).toHaveBeenCalledTimes(1);
@@ -175,6 +175,6 @@ describe("application shell boundaries", () => {
       />,
     );
 
-    expect((screen.getByRole("button", { name: "استيراد المسودة إلى المتجر" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "تطبيق المسودة في المحرر" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

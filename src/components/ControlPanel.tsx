@@ -27,6 +27,8 @@ export default function ControlPanel({
   onOpenInventory,
   onOpenDomainModal,
   onCompleteCustomization,
+  completionDisabled = false,
+  completionLoading = false,
 }: ControlPanelProps) {
   const { assistant, catalog, storeAssets } = useUiAdapters();
   const [assistantPrompt, setAssistantPrompt] = useState("");
@@ -87,10 +89,22 @@ export default function ControlPanel({
         {activeTab === "checkout" && <MerchantCheckoutSettingsEditor config={config} onChange={handleConfigChange} onOpenPreview={onOpenCheckoutPreview} />}
         {activeTab === "pages" && <MerchantStoreContentEditor config={config} activeTenantId={activeTenantId} mediaOwnerKey={mediaOwnerKey} onChange={handleConfigChange} uploadAsset={storeAssets.upload} />}
         {activeTab === "ai" && <AiCopywriterPanel prompt={assistantPrompt} loading={isGeneratingCopy} output={copyOutput} onPromptChange={setAssistantPrompt} onSubmit={triggerCopyWrite} />}
-        {activeTab === "export" && <StoreSubmissionPanel storeName={config.storeName} slogan={config.slogan} productCount={config.products.length} onOpen={onOpenDomainModal} />}
+        {activeTab === "export" && (
+          <StoreSubmissionPanel
+            storeName={config.storeName}
+            slogan={config.slogan}
+            productCount={config.products.length}
+            onOpen={onOpenDomainModal}
+            existingWorkspace={activeTenantId !== null}
+            onReturnToPortal={onCompleteCustomization}
+          />
+        )}
       </div>
       {activeTab !== "export" && (
         <CustomizationCompletionBar
+          existingWorkspace={activeTenantId !== null}
+          disabled={completionDisabled}
+          loading={completionLoading}
           onComplete={() => {
             if (onCompleteCustomization) {
               void onCompleteCustomization();

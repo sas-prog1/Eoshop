@@ -36,12 +36,13 @@ describe("control panel workflow panels", () => {
     const user = userEvent.setup();
     const view = render(<PreviewDeviceSelector device="desktop" onChange={onChange} />);
 
-    expect(screen.getByRole("button", { name: "كمبيوتر" }).className).toContain("bg-amber-500");
+    expect(screen.getByRole("button", { name: "سطح المكتب" }).className).toContain("bg-slate-950");
+    expect(screen.getByRole("button", { name: "سطح المكتب" }).getAttribute("aria-pressed")).toBe("true");
     await user.click(screen.getByRole("button", { name: "جوال" }));
     expect(onChange).toHaveBeenCalledWith("mobile");
 
     view.rerender(<PreviewDeviceSelector device="mobile" onChange={onChange} />);
-    expect(screen.getByRole("button", { name: "جوال" }).className).toContain("bg-amber-500");
+    expect(screen.getByRole("button", { name: "جوال" }).className).toContain("bg-slate-950");
   });
 
   it("delegates completion through one explicit callback", async () => {
@@ -49,8 +50,20 @@ describe("control panel workflow panels", () => {
     const user = userEvent.setup();
     render(<CustomizationCompletionBar onComplete={onComplete} />);
 
-    await user.click(screen.getByRole("button", { name: /تم الانتهاء من التخصيص/ }));
+    await user.click(screen.getByRole("button", { name: "متابعة إلى العنوان" }));
     expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("labels an existing workspace completion accurately and prevents repeated saves", async () => {
+    const onComplete = vi.fn();
+    const user = userEvent.setup();
+    const view = render(<CustomizationCompletionBar existingWorkspace onComplete={onComplete} />);
+
+    await user.click(screen.getByRole("button", { name: "حفظ والعودة" }));
+    expect(onComplete).toHaveBeenCalledTimes(1);
+
+    view.rerender(<CustomizationCompletionBar existingWorkspace loading onComplete={onComplete} />);
+    expect((screen.getByRole("button", { name: "جارٍ الحفظ…" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("renders order loading, error and empty states", () => {
@@ -105,12 +118,12 @@ describe("control panel workflow panels", () => {
       <AiCopywriterPanel prompt="" loading={false} output={null} onPromptChange={onPromptChange} onSubmit={onSubmit} />,
     );
 
-    expect((screen.getByRole("button", { name: /اقترح لي نصوصاً إبداعية/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "إنشاء مقترحات" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(screen.getByPlaceholderText(/بخور العود الأزرق/), { target: { value: "فكرة" } });
     expect(onPromptChange).toHaveBeenCalledWith("فكرة");
 
     view.rerender(<AiCopywriterPanel prompt="فكرة" loading output={null} onPromptChange={onPromptChange} onSubmit={onSubmit} />);
-    expect((screen.getByRole("button", { name: "جاري تفعيل الإبداع..." }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "جارٍ إنشاء المقترحات…" }) as HTMLButtonElement).disabled).toBe(true);
 
     view.rerender(
       <AiCopywriterPanel
@@ -140,5 +153,24 @@ describe("control panel workflow panels", () => {
     view.rerender(<StoreSubmissionPanel storeName="متجري" slogan="شعاري" productCount={3} onOpen={onOpen} />);
     await user.click(screen.getByRole("button", { name: /اختيار العنوان/ }));
     expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns an existing workspace to the merchant area without offering a second address", async () => {
+    const onReturnToPortal = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(
+      <StoreSubmissionPanel
+        storeName="متجري القائم"
+        slogan="شعاري"
+        productCount={3}
+        onOpen={undefined}
+        existingWorkspace
+        onReturnToPortal={onReturnToPortal}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /اختيار العنوان/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "حفظ والعودة إلى مساحة التاجر" }));
+    expect(onReturnToPortal).toHaveBeenCalledTimes(1);
   });
 });

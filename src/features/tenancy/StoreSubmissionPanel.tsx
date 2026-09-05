@@ -1,19 +1,30 @@
 import React from "react";
-import { Sparkles } from "lucide-react";
+import { CheckCircle2, Send } from "lucide-react";
 
 interface StoreSubmissionPanelProps {
   storeName: string;
   slogan: string;
   productCount: number;
   onOpen: (() => void) | undefined;
+  existingWorkspace?: boolean;
+  onReturnToPortal?: (() => void | Promise<void>) | undefined;
 }
 
-export default function StoreSubmissionPanel({ storeName, slogan, productCount, onOpen }: StoreSubmissionPanelProps) {
+export default function StoreSubmissionPanel({
+  storeName,
+  slogan,
+  productCount,
+  onOpen,
+  existingWorkspace = false,
+  onReturnToPortal,
+}: StoreSubmissionPanelProps) {
+  const action = existingWorkspace ? onReturnToPortal : onOpen;
+
   return (
     <div className="space-y-5 animate-fadeIn">
-      <div className="rounded-2xl border border-indigo-200 bg-gradient-to-l from-indigo-50 to-sky-50 p-5">
-        <h4 className="flex items-center gap-2 text-sm font-black text-indigo-950"><Sparkles className="h-5 w-5 text-indigo-600" /> إرسال طلب المتجر الحقيقي</h4>
-        <p className="mt-2 text-xs leading-relaxed text-indigo-800">ستفتح نافذة متصلة بالخادم لاختيار عنوان متاح وباقة فعلية. إرسال الطلب يحجز العنوان ويضع المتجر للمراجعة فقط؛ تجهيز قاعدة البيانات والنشر عمليتان لاحقتان محميتان.</p>
+      <div className="rounded-2xl border border-sky-200 bg-sky-50 p-5">
+        <h4 className="flex items-center gap-2 text-sm font-black text-slate-950"><CheckCircle2 className="h-5 w-5 text-sky-700" /> {existingWorkspace ? "حفظ المتجر والعودة" : "مراجعة المتجر والنشر"}</h4>
+        <p className="mt-2 text-xs leading-relaxed text-slate-700">{existingWorkspace ? "راجع التغييرات في المعاينة ثم احفظها. ستدير حالة النشر والرابط العام من مساحة التاجر." : "راجع محتوى المتجر ومنتجاته أولًا. عند المتابعة ستختار عنوانًا متاحًا وباقة، ثم ترسل الطلب إلى دورة المراجعة والنشر المحمية."}</p>
       </div>
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
         <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">ملخص التصميم الحالي</span>
@@ -22,12 +33,12 @@ export default function StoreSubmissionPanel({ storeName, slogan, productCount, 
             <h5 className="text-sm font-extrabold text-slate-900">{storeName}</h5>
             <p className="text-xs text-slate-500">{slogan}</p>
           </div>
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{productCount} منتج</span>
+          <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800">{productCount} منتج</span>
         </div>
       </div>
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-900">رفع مستندات التحقق، الدفع الإلكتروني، والنطاقات الخارجية ليست مفعلة في هذه المرحلة ولن تدّعي الواجهة نجاحها.</div>
-      <button type="button" onClick={() => onOpen?.()} disabled={!onOpen} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-emerald-600 via-sky-600 to-indigo-600 px-6 py-4 text-sm font-extrabold text-white shadow-lg disabled:opacity-50">
-        <Sparkles className="h-5 w-5" /> اختيار العنوان والباقة وإرسال الطلب
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed text-slate-700">{existingWorkspace ? "الحفظ يحدّث مساحة العمل فقط ولا يغيّر حالة النشر تلقائيًا." : "تُدار مستندات التحقق ضمن دورة إنشاء المتجر عند الحاجة. المعاينة ليست نشرًا؛ ستظهر للعملاء النسخة التي تعتمدها المنصة فقط."}</div>
+      <button type="button" onClick={() => void action?.()} disabled={!action} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-6 py-3 text-sm font-extrabold text-white shadow-md transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50">
+        <Send className="h-5 w-5 text-sky-300" /> {existingWorkspace ? "حفظ والعودة إلى مساحة التاجر" : "اختيار العنوان والباقة"}
       </button>
     </div>
   );

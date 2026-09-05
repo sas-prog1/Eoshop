@@ -54,7 +54,7 @@ export default function WorkspaceRecoveryOverlays({
               type="button"
               disabled={!conflict.serverReloaded || loading || saving}
               onClick={applyNonConflictingChanges}
-              className="rounded-lg border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800 disabled:opacity-40"
+              className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800 disabled:opacity-40"
             >
               تطبيق التغييرات الآمنة
             </button>
@@ -82,13 +82,13 @@ export default function WorkspaceRecoveryOverlays({
                 <p className="font-black text-slate-800">{String(field)}</p>
                 <div className="mt-2 grid gap-2 md:grid-cols-2">
                   <div>
-                    <p className="mb-1 font-bold text-amber-700">قيمتك المحفوظة للاسترداد</p>
+                    <p className="mb-1 font-bold text-amber-700">نسختك المحلية</p>
                     <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-amber-50 p-2 text-[10px]">
                       {JSON.stringify(conflictReview.draft[field], null, 2)}
                     </pre>
                   </div>
                   <div>
-                    <p className="mb-1 font-bold text-sky-700">قيمة الخادم الحالية</p>
+                    <p className="mb-1 font-bold text-sky-700">النسخة المحفوظة على الخادم</p>
                     <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-sky-50 p-2 text-[10px]">
                       {JSON.stringify(conflictReview.server[field], null, 2)}
                     </pre>
@@ -98,11 +98,11 @@ export default function WorkspaceRecoveryOverlays({
             ))}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={archiveConflictDraft} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white">
+            <button type="button" onClick={archiveConflictDraft} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white">
               حفظ لقطتي كمسودة محلية
             </button>
             <button type="button" onClick={discardConflictReview} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600">
-              تجاهل القيم المتعارضة
+              الاحتفاظ بنسخة الخادم
             </button>
           </div>
         </div>
@@ -110,7 +110,7 @@ export default function WorkspaceRecoveryOverlays({
 
       {localDraft && (
         <div className="fixed bottom-5 left-5 z-50 max-w-md rounded-2xl border border-amber-300 bg-white p-4 shadow-2xl">
-          <p className="text-sm font-black text-slate-900">توجد مسودة محلية لم تُدمج</p>
+          <p className="text-sm font-black text-slate-900">توجد مسودة محلية غير مطبّقة</p>
           <p className="mt-1 text-xs leading-5 text-slate-600">
             بيانات الخادم معروضة الآن. لن نستبدلها بالمسودة إلا بعد اختيارك الصريح.
           </p>
@@ -119,9 +119,9 @@ export default function WorkspaceRecoveryOverlays({
               type="button"
               disabled={saving || loading || conflict !== null}
               onClick={() => importLocalDraft(localDraft)}
-              className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+              className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
             >
-              استيراد المسودة إلى المتجر
+              تطبيق المسودة في المحرر
             </button>
             <button type="button" onClick={discardLocalDraft} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600">
               تجاهل المسودة
