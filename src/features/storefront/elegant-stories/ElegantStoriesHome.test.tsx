@@ -35,6 +35,7 @@ function model(stories: ElegantStoryViewModel[]): ElegantStoriesHomeViewModel {
       eyebrow: "قصص تستحق الاكتشاف",
       title: "إطلاق الموسم",
       subtitle: "تشكيلة جديدة ورؤية مختلفة.",
+      targetType: "products",
     },
     stories,
     discoveryItems,
@@ -48,6 +49,7 @@ describe("ElegantStoriesHome isolated presentation", () => {
       <ElegantStoriesHome
         model={model([1, 2, 3, 4, 5, 6].map(story))}
         onOpenStory={onOpenStory}
+        onOpenIntro={vi.fn()}
         onOpenDiscovery={vi.fn()}
         onOpenDiscoveryAll={vi.fn()}
       />,
@@ -76,6 +78,7 @@ describe("ElegantStoriesHome isolated presentation", () => {
       <ElegantStoriesHome
         model={model(Array.from({ length: count }, (_, index) => story(index + 1)))}
         onOpenStory={vi.fn()}
+        onOpenIntro={vi.fn()}
         onOpenDiscovery={vi.fn()}
         onOpenDiscoveryAll={vi.fn()}
       />,
@@ -91,6 +94,7 @@ describe("ElegantStoriesHome isolated presentation", () => {
       <ElegantStoriesHome
         model={model([])}
         onOpenStory={vi.fn()}
+        onOpenIntro={vi.fn()}
         onOpenDiscovery={onOpenDiscovery}
         onOpenDiscoveryAll={onOpenDiscoveryAll}
       />,

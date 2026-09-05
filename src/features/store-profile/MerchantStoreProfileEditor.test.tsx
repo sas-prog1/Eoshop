@@ -128,6 +128,43 @@ describe("MerchantStoreProfileEditor", () => {
     expect(screen.getByRole("heading", { name: "واجهة الترحيب" })).toBeTruthy();
   });
 
+  it("edits the complete hero contract and uploads a dedicated mobile image", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const uploadAsset = vi.fn(async () => ({
+      id: "22222222-2222-4222-8222-222222222222",
+      url: "/api/store-assets/tenant-a/22222222-2222-4222-8222-222222222222",
+      mimeType: "image/webp" as const,
+      byteSize: 80,
+    }));
+    const product = { ...ELEGANT_PRESET.products[0], id: "33333333-3333-4333-8333-333333333333", name: "سماعة منشورة", category: "إلكترونيات", status: "published" as const };
+    const view = renderEditor({
+      config: { ...ELEGANT_PRESET, products: [product], heroBannerTargetType: "products" },
+      initialSection: "hero",
+      onChange,
+      uploadAsset,
+    });
+
+    await user.selectOptions(screen.getByLabelText("وجهة زر واجهة الترحيب"), "category");
+    expect(onChange).toHaveBeenCalledWith("heroBannerTargetType", "category");
+    expect(onChange).toHaveBeenCalledWith("heroBannerTargetValue", undefined);
+    view.rerender(<MerchantStoreProfileEditor {...view.props} config={{ ...view.props.config, heroBannerTargetType: "category" }} />);
+    await user.selectOptions(screen.getByLabelText("التصنيف المستهدف لواجهة الترحيب"), "إلكترونيات");
+    expect(onChange).toHaveBeenCalledWith("heroBannerTargetValue", "إلكترونيات");
+
+    fireEvent.change(screen.getByLabelText("موضع صورة واجهة الترحيب أفقيًا"), { target: { value: "72" } });
+    fireEvent.change(screen.getByLabelText("موضع صورة واجهة الترحيب عموديًا"), { target: { value: "38" } });
+    expect(onChange).toHaveBeenCalledWith("heroBannerFocalPointX", 72);
+    expect(onChange).toHaveBeenCalledWith("heroBannerFocalPointY", 38);
+
+    const uploadInputs = view.container.querySelectorAll('input[type="file"]');
+    expect(uploadInputs).toHaveLength(2);
+    fireEvent.change(uploadInputs[1], { target: { files: [new File(["mobile"], "hero-mobile.webp", { type: "image/webp" })] } });
+    await waitFor(() => expect(uploadAsset).toHaveBeenCalledWith("tenant-a", expect.any(File), expect.any(AbortSignal)));
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith("heroBannerMobileImage", expect.stringContaining("/api/store-assets/tenant-a/")));
+    expect(onChange).toHaveBeenCalledWith("showHeroBanner", true);
+  });
+
   it("reorders and hides semantic storefront sections while keeping one visible", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

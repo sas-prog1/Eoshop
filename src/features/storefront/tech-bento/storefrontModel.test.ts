@@ -89,6 +89,25 @@ describe("techBentoHomeModel", () => {
     expect(model.hero.mobileImageUrl).toContain("000000000902");
   });
 
+  it("keeps the Tech hero visible when only one responsive image is configured", () => {
+    const mobileOnly = techBentoHomeModel({
+      ...TECH_PRESET,
+      showHeroBanner: true,
+      heroBannerImage: "",
+      heroBannerMobileImage: "/api/store-assets/tenant/00000000-0000-4000-8000-000000000903",
+    });
+    expect(mobileOnly.hero.imageUrl).toContain("000000000903");
+    expect(mobileOnly.hero.mobileImageUrl).toBe(mobileOnly.hero.imageUrl);
+
+    const desktopOnly = techBentoHomeModel({
+      ...TECH_PRESET,
+      showHeroBanner: true,
+      heroBannerImage: "/api/store-assets/tenant/00000000-0000-4000-8000-000000000904",
+      heroBannerMobileImage: "",
+    });
+    expect(desktopOnly.hero.mobileImageUrl).toBe(desktopOnly.hero.imageUrl);
+  });
+
   it("derives unique categories from published products only", () => {
     const baseProduct = TECH_PRESET.products[0];
     const model = techBentoHomeModel({

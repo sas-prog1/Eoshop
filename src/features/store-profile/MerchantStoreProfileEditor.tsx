@@ -8,7 +8,13 @@ import MerchantMarketingBlocksEditor from "./MerchantMarketingBlocksEditor";
 import MerchantTechBentoBlocksEditor from "./MerchantTechBentoBlocksEditor";
 
 type ProfileSection = "identity" | "appearance" | "hero" | "campaigns" | "layout";
-type AssetField = "logoUrl" | "heroBannerImage";
+type AssetField = "logoUrl" | "heroBannerImage" | "heroBannerMobileImage";
+
+const ASSET_LIMITS: Record<AssetField, number> = {
+  logoUrl: 5 * 1024 * 1024,
+  heroBannerImage: 2 * 1024 * 1024,
+  heroBannerMobileImage: 1024 * 1024,
+};
 
 interface MerchantStoreProfileEditorProps {
   config: StoreConfig;
@@ -66,7 +72,7 @@ export default function MerchantStoreProfileEditor({
     setUploadError(null);
 
     return () => uploadRef.current?.controller.abort();
-  }, [activeTenantId, mediaOwnerKey, config.logoUrl, config.heroBannerImage]);
+  }, [activeTenantId, mediaOwnerKey, config.logoUrl, config.heroBannerImage, config.heroBannerMobileImage]);
 
   const set = <Key extends keyof StoreConfig>(key: Key, value: StoreConfig[Key]) => onChange(key, value);
   const layout = storefrontSectionsOrDefault(config.homeSections);
@@ -100,8 +106,10 @@ export default function MerchantStoreProfileEditor({
       setUploadError("احفظ مسودة المتجر وأكمل اعتماده أولاً؛ الرفع من الجهاز متاح للمتاجر القائمة فقط.");
       return;
     }
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size <= 0 || file.size > 5 * 1024 * 1024) {
-      setUploadError("استخدم صورة JPEG أو PNG أو WebP بحجم لا يتجاوز 5 ميجابايت.");
+    const limit = ASSET_LIMITS[field];
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size <= 0 || file.size > limit) {
+      const limitLabel = limit >= 1024 * 1024 ? `${Math.round(limit / (1024 * 1024))} ميجابايت` : `${Math.round(limit / 1024)} كيلوبايت`;
+      setUploadError(`استخدم صورة JPEG أو PNG أو WebP بحجم لا يتجاوز ${limitLabel} لهذه الخانة.`);
       return;
     }
 
@@ -120,7 +128,7 @@ export default function MerchantStoreProfileEditor({
         || current.tenantId !== tenantAtStart || current.ownerKey !== ownerAtStart) return;
       set(field, asset.url);
       if (field === "logoUrl") set("logoType", "image");
-      if (field === "heroBannerImage") set("showHeroBanner", true);
+      if (field === "heroBannerImage" || field === "heroBannerMobileImage") set("showHeroBanner", true);
     } catch (error) {
       if (!controller.signal.aborted && generation === generationRef.current) {
         setUploadError(uiErrorMessage(error, "تعذر رفع الصورة. حاول مرة أخرى دون مغادرة هذه الصفحة."));
@@ -131,6 +139,14 @@ export default function MerchantStoreProfileEditor({
         setUploading(null);
       }
     }
+  };
+
+  const publishedProducts = config.products.filter((product) => product.status === "published");
+  const publishedCategories = Array.from(new Set(publishedProducts.map((product) => product.category.trim()).filter(Boolean)));
+  const heroTargetType = config.heroBannerTargetType ?? "products";
+  const setHeroTargetType = (targetType: NonNullable<StoreConfig["heroBannerTargetType"]>) => {
+    set("heroBannerTargetType", targetType);
+    set("heroBannerTargetValue", undefined);
   };
 
   const assetField = (field: AssetField, label: string) => {
@@ -226,12 +242,24 @@ export default function MerchantStoreProfileEditor({
 
       {section === "hero" && (
         <div className="space-y-4">
-          <header className="flex items-start justify-between gap-3"><div><h3 className="text-base font-black text-slate-900">واجهة الترحيب</h3><p className="mt-1 text-xs leading-5 text-slate-500">حرر محتوى الترحيب، ويمكن التحكم بظهور القسم كاملًا من تبويب ترتيب الأقسام.</p></div><button type="button" role="switch" aria-label="إظهار طبقة صورة الترحيب" aria-checked={config.showHeroBanner ?? false} onClick={() => set("showHeroBanner", !(config.showHeroBanner ?? false))} className={`rounded-full px-3 py-1.5 text-xs font-black ${config.showHeroBanner ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{config.showHeroBanner ? "طبقة الصورة مفعلة" : "طبقة الصورة مخفية"}</button></header>
-          {assetField("heroBannerImage", "صورة واجهة الترحيب")}
+          <header className="flex items-start justify-between gap-3"><div><h3 className="text-base font-black text-slate-900">واجهة الترحيب</h3><p className="mt-1 text-xs leading-5 text-slate-500">حرر الرسالة ووجهة زرها. يتحكم تبويب ترتيب الأقسام بظهور واجهة الترحيب كاملة.</p></div><button type="button" role="switch" aria-label="إظهار صورة واجهة الترحيب" aria-checked={config.showHeroBanner ?? false} onClick={() => set("showHeroBanner", !(config.showHeroBanner ?? false))} className={`rounded-full px-3 py-1.5 text-xs font-black ${config.showHeroBanner ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{config.showHeroBanner ? "الصورة مفعلة" : "الصورة مخفية"}</button></header>
+          {config.themeStyle === "elegant" && (config.marketingBlocks ?? []).some((block) => block.placement === "editorial_story" && block.enabled) ? (
+            <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 text-[11px] font-bold leading-6 text-violet-900">في قالب القصص الأنيق، صور المشهد الرئيسية تأتي من تبويب «القصص والمختارات». صورة الغلاف أدناه تبقى بديلًا آمنًا عندما لا توجد قصص مفعلة.</div>
+          ) : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {assetField("heroBannerImage", "صورة الغلاف لسطح المكتب")}
+            {assetField("heroBannerMobileImage", "صورة مستقلة للجوال")}
+          </div>
           <label className="block space-y-1.5"><span className="text-xs font-bold text-slate-700">العنوان</span><input value={config.heroBannerTitle ?? ""} onChange={(event) => set("heroBannerTitle", event.target.value)} maxLength={500} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label>
           <label className="block space-y-1.5"><span className="text-xs font-bold text-slate-700">النص المساند</span><textarea value={config.heroBannerSubtitle ?? ""} onChange={(event) => set("heroBannerSubtitle", event.target.value)} maxLength={1000} rows={3} className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label>
           <div className="grid gap-3 sm:grid-cols-2"><label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">الشارة</span><input value={config.heroBannerBadge ?? ""} onChange={(event) => set("heroBannerBadge", event.target.value)} maxLength={255} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label><label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">نص الزر</span><input value={config.heroBannerButtonText ?? ""} onChange={(event) => set("heroBannerButtonText", event.target.value)} maxLength={255} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label></div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">وجهة الزر</span><select aria-label="وجهة زر واجهة الترحيب" value={heroTargetType} onChange={(event) => setHeroTargetType(event.target.value as NonNullable<StoreConfig["heroBannerTargetType"]>)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="products">كل المنتجات</option><option value="category">تصنيف محدد</option><option value="product">منتج محدد</option></select></label>
+            {heroTargetType === "category" ? <label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">التصنيف المستهدف</span><select aria-label="التصنيف المستهدف لواجهة الترحيب" value={config.heroBannerTargetValue ?? ""} onChange={(event) => set("heroBannerTargetValue", event.target.value || undefined)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">اختر تصنيفًا منشورًا</option>{publishedCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label> : null}
+            {heroTargetType === "product" ? <label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">المنتج المستهدف</span><select aria-label="المنتج المستهدف لواجهة الترحيب" value={config.heroBannerTargetValue ?? ""} onChange={(event) => set("heroBannerTargetValue", event.target.value || undefined)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">اختر منتجًا منشورًا</option>{publishedProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label> : null}
+          </div>
           <div className="grid gap-3 sm:grid-cols-2"><label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">ارتفاع الواجهة</span><select value={config.heroBannerHeight ?? "medium"} onChange={(event) => set("heroBannerHeight", event.target.value as StoreConfig["heroBannerHeight"])} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="compact">مدمج</option><option value="medium">متوسط</option><option value="large">كبير</option></select></label><label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">تعتيم الصورة: {config.heroBannerOverlayOpacity ?? 35}%</span><input type="range" min="0" max="100" value={config.heroBannerOverlayOpacity ?? 35} onChange={(event) => set("heroBannerOverlayOpacity", Number(event.target.value))} className="w-full" /></label></div>
+          <div className="grid gap-3 sm:grid-cols-2"><label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">موضع الصورة أفقيًا: {config.heroBannerFocalPointX ?? 50}%</span><input aria-label="موضع صورة واجهة الترحيب أفقيًا" type="range" min="0" max="100" value={config.heroBannerFocalPointX ?? 50} onChange={(event) => set("heroBannerFocalPointX", Number(event.target.value))} className="w-full" /></label><label className="space-y-1.5"><span className="text-xs font-bold text-slate-700">موضع الصورة عموديًا: {config.heroBannerFocalPointY ?? 50}%</span><input aria-label="موضع صورة واجهة الترحيب عموديًا" type="range" min="0" max="100" value={config.heroBannerFocalPointY ?? 50} onChange={(event) => set("heroBannerFocalPointY", Number(event.target.value))} className="w-full" /></label></div>
         </div>
       )}
 

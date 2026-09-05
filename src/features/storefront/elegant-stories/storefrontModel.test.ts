@@ -57,7 +57,9 @@ describe("elegantStoriesHomeModel", () => {
       heroBannerTitle: " قصة المتجر ",
       heroBannerSubtitle: " وصف قصير ",
       heroBannerButtonText: " عرض المختارات ",
-    }).intro).toEqual({ eyebrow: "موسمي", title: "قصة المتجر", subtitle: "وصف قصير", ctaLabel: "عرض المختارات" });
+      heroBannerTargetType: "category",
+      heroBannerTargetValue: "عطور",
+    }).intro).toEqual({ eyebrow: "موسمي", title: "قصة المتجر", subtitle: "وصف قصير", ctaLabel: "عرض المختارات", targetType: "category", targetValue: "عطور" });
 
     expect(elegantStoriesHomeModel({
       ...ELEGANT_PRESET,
@@ -66,6 +68,6 @@ describe("elegantStoriesHomeModel", () => {
       heroBannerSubtitle: "",
       heroBannerButtonText: "",
       slogan: "هوية المتجر",
-    }).intro).toEqual({ eyebrow: "قصص تستحق الاكتشاف", title: "إطلاق الموسم", subtitle: "هوية المتجر", ctaLabel: undefined });
+    }).intro).toEqual({ eyebrow: "قصص تستحق الاكتشاف", title: "إطلاق الموسم", subtitle: "هوية المتجر", ctaLabel: undefined, targetType: "products", targetValue: undefined });
   });
 });

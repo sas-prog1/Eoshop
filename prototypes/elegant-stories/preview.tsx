@@ -100,6 +100,7 @@ const model: ElegantStoriesHomeViewModel = {
     eyebrow: "قصص تستحق الاكتشاف",
     title: "إطلاق الموسم",
     subtitle: "تشكيلة جديدة، رؤى مختلفة، وأسلوبك القادم يبدأ من هنا.",
+    targetType: "products",
   },
   stories,
   discoveryItems,
@@ -127,6 +128,7 @@ function Preview() {
       <ElegantStoriesHome
         model={model}
         onOpenStory={() => document.querySelector("[data-elegant-discovery]")?.scrollIntoView({ behavior: "smooth" })}
+        onOpenIntro={() => document.querySelector("[data-elegant-discovery]")?.scrollIntoView({ behavior: "smooth" })}
         onOpenDiscovery={() => undefined}
         onOpenDiscoveryAll={() => document.querySelector("[data-elegant-discovery]")?.scrollIntoView({ behavior: "smooth" })}
       />

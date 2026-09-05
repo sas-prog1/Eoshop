@@ -64,6 +64,10 @@ export function elegantStoriesHomeModel(config: StoreConfig, now = new Date()): 
       title: config.heroBannerTitle?.trim() || "إطلاق الموسم",
       subtitle: config.heroBannerSubtitle?.trim() || config.slogan?.trim(),
       ctaLabel: config.heroBannerButtonText?.trim() || undefined,
+      targetType: config.heroBannerTargetType ?? "products",
+      targetValue: config.heroBannerTargetType && config.heroBannerTargetType !== "products"
+        ? config.heroBannerTargetValue?.trim() || undefined
+        : undefined,
     },
     stories: activeMarketingBlocks(config, "editorial_story", now).slice(0, 5).map(storyFromBlock),
     discoveryItems: activeMarketingBlocks(config, "discovery", now).slice(0, 10).map(discoveryFromBlock),
