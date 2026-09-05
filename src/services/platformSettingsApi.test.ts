@@ -42,6 +42,15 @@ describe("platformSettingsApi", () => {
     })).toThrow(/رابط صورة هوية غير آمن/);
   });
 
+  it("accepts the exact server-owned platform asset route", () => {
+    const managed = "/api/platform-assets/11111111-1111-4111-8111-111111111111";
+    expect(mapPlatformSettings({
+      ...DEFAULT_PLATFORM_SETTINGS,
+      landingHeroImageUrl: managed,
+      authImageUrl: managed,
+    })).toMatchObject({ landingHeroImageUrl: managed, authImageUrl: managed });
+  });
+
   it("loads the public safe projection with an abort signal", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       data: { ...DEFAULT_PLATFORM_SETTINGS, platformName: "هوية الخادم" },

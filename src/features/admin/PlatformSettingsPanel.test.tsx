@@ -16,12 +16,14 @@ const serverSettings = (overrides: Partial<AdminPlatformSettings> = {}): AdminPl
   ...overrides,
 });
 
-function renderPanel(getPlatformSettings: () => Promise<AdminPlatformSettings>, updatePlatformSettings = vi.fn()) {
+function renderPanel(getPlatformSettings: () => Promise<AdminPlatformSettings>, updatePlatformSettings = vi.fn(), uploadPlatformAsset = vi.fn()) {
   const onDirtyChange = vi.fn();
+  const onSaved = vi.fn();
   const administration = {
     ...createFakeUiAdapters().administration,
     getPlatformSettings,
     updatePlatformSettings,
+    uploadPlatformAsset,
   };
   render(<PlatformSettingsPanel
     administration={administration}
@@ -30,13 +32,16 @@ function renderPanel(getPlatformSettings: () => Promise<AdminPlatformSettings>, 
     onForbiddenChange={vi.fn()}
     onLoadingChange={vi.fn()}
     onDirtyChange={onDirtyChange}
-    onSaved={vi.fn()}
+    onSaved={onSaved}
     onToast={vi.fn()}
   />);
-  return { onDirtyChange, updatePlatformSettings };
+  return { onDirtyChange, updatePlatformSettings, uploadPlatformAsset, onSaved };
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("PlatformSettingsPanel", () => {
   it("tracks dirty edits and saves with the server revision", async () => {
@@ -126,6 +131,33 @@ describe("PlatformSettingsPanel", () => {
       landingHeroImageUrl: "https://cdn.example.test/platform/landing.jpg",
       authImageUrl: "https://cdn.example.test/platform/auth.jpg",
     })));
+  }, 15_000);
+
+  it("binds an uploaded image through the existing revisioned save before applying it", async () => {
+    const NativeURL = URL;
+    class MockURL extends NativeURL { static createObjectURL = () => "blob:panel-preview"; static revokeObjectURL = vi.fn(); }
+    class MockImage { naturalWidth = 1200; naturalHeight = 675; onload: null | (() => void) = null; set src(_value: string) { queueMicrotask(() => this.onload?.()); } }
+    vi.stubGlobal("URL", MockURL);
+    vi.stubGlobal("Image", MockImage);
+    const managed = "/api/platform-assets/11111111-1111-4111-8111-111111111111";
+    const upload = vi.fn().mockResolvedValue({
+      id: "11111111-1111-4111-8111-111111111111", url: managed, purpose: "landing_hero",
+      mimeType: "image/png", byteSize: 5, width: 1200, height: 675,
+    });
+    const update = vi.fn().mockImplementation(async (payload) => serverSettings({ ...payload, revision: 2 }));
+    const { onSaved } = renderPanel(vi.fn().mockResolvedValue(serverSettings()), update, upload);
+    const user = userEvent.setup();
+
+    await user.upload(await screen.findByLabelText("رفع صورة الصفحة الرئيسية من الجهاز"), new File(["image"], "hero.png", { type: "image/png" }));
+    expect(screen.getByAltText("معاينة صورة الصفحة الرئيسية قبل الحفظ")).toBeTruthy();
+    expect(onSaved).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "رفع واستخدام الأصل" }));
+    await waitFor(() => expect((screen.getByLabelText("رابط صورة الصفحة الرئيسية") as HTMLInputElement).value).toBe(managed));
+    expect(document.querySelector('[data-testid="platform-landing-preview"] img[src="blob:panel-preview"]')).toBeTruthy();
+    expect(onSaved).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "حفظ الإعدادات" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(expect.objectContaining({ expectedRevision: 1, landingHeroImageUrl: managed })));
+    expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ revision: 2, landingHeroImageUrl: managed }));
   }, 15_000);
 
   it("blocks an unsafe visual identity image before any server mutation", async () => {

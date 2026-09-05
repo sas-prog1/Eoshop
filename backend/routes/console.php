@@ -15,6 +15,10 @@ Schedule::command('store-assets:prune')
     ->dailyAt('02:45')
     ->withoutOverlapping();
 
+Schedule::command('platform-assets:prune')
+    ->dailyAt('02:50')
+    ->withoutOverlapping();
+
 Schedule::command('inventory:expire-reservations')
     ->everyMinute()
     ->withoutOverlapping();

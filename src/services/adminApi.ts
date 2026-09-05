@@ -1,4 +1,6 @@
-import { apiClient } from "./apiClient";
+import { apiClient, ApiError } from "./apiClient";
+import { randomUuid } from "../utils/randomUuid";
+import { isManagedPlatformAssetUrl } from "../utils/platformIdentityImageUrl";
 import {
   arrayField,
   booleanField,
@@ -17,6 +19,43 @@ import {
 } from "./platformSettingsApi";
 
 export type { AdminPlatformSettings, UpdatePlatformSettingsInput } from "./platformSettingsApi";
+
+export type PlatformAssetPurpose = "landing_hero" | "authentication";
+
+export interface PlatformAssetUpload {
+  id: string;
+  url: string;
+  purpose: PlatformAssetPurpose;
+  mimeType: "image/jpeg" | "image/png" | "image/webp";
+  byteSize: number;
+  width: number;
+  height: number;
+}
+
+export interface PlatformAssetUploadOptions {
+  idempotencyKey?: string;
+  signal?: AbortSignal;
+}
+
+function mapPlatformAssetUpload(value: unknown): PlatformAssetUpload {
+  const envelope = record(value, "رفع أصل هوية المنصة");
+  const dto = record(envelope.data, "أصل هوية المنصة");
+  const purpose = enumField(dto, "purpose", ["landing_hero", "authentication"] as const, "أصل هوية المنصة");
+  const mimeType = enumField(dto, "mimeType", ["image/jpeg", "image/png", "image/webp"] as const, "أصل هوية المنصة");
+  const url = stringField(dto, "url", "أصل هوية المنصة");
+  if (!isManagedPlatformAssetUrl(url)) {
+    throw new ApiError("استجابة الخادم لا تطابق مسار أصل المنصة المُدار.", "unexpected", 200);
+  }
+  return {
+    id: stringField(dto, "id", "أصل هوية المنصة"),
+    url,
+    purpose,
+    mimeType,
+    byteSize: numberField(dto, "byteSize", "أصل هوية المنصة"),
+    width: numberField(dto, "width", "أصل هوية المنصة"),
+    height: numberField(dto, "height", "أصل هوية المنصة"),
+  };
+}
 
 export type VerificationStatus = "approved" | "pending" | "changes_requested" | "rejected" | "suspended";
 export type ProvisioningStatus = "not_started" | "queued" | "provisioning" | "retrying" | "active" | "failed";
@@ -522,6 +561,21 @@ export const adminApi = {
       body: input,
     }), "تحديث إعدادات المنصة");
     return mapAdminPlatformSettings(payload.data);
+  },
+
+  async uploadPlatformAsset(purpose: PlatformAssetPurpose, file: File, options: PlatformAssetUploadOptions = {}): Promise<PlatformAssetUpload> {
+    const idempotencyKey = options.idempotencyKey ?? randomUuid();
+    const body = new FormData();
+    body.append("purpose", purpose);
+    body.append("image", file);
+
+    return mapPlatformAssetUpload(await apiClient.request("/api/admin/platform-assets", {
+      method: "POST",
+      body,
+      headers: { "Idempotency-Key": idempotencyKey },
+      retrySafety: "idempotent",
+      signal: options.signal,
+    }));
   },
 
   async overview(): Promise<PlatformOverview> {

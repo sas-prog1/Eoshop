@@ -775,6 +775,10 @@ VALUES ('$longLegacyLabel.example.test', 'wp21-long-label', now(), now());
     $platformSettingsMigration = 'database/migrations/system/2026_08_22_000012_create_platform_settings.php'
     $guidedOnboardingMigration = 'database/migrations/system/2026_08_23_000013_add_guided_account_and_onboarding.php'
     $applicationDossierMigration = 'database/migrations/system/2026_08_27_000014_create_store_application_dossiers.php'
+    $platformVisualIdentityMigration = 'database/migrations/system/2026_08_28_000015_add_platform_visual_identity.php'
+    $platformAssetsMigration = 'database/migrations/system/2026_09_02_000016_create_platform_assets.php'
+    Invoke-Compose exec -T backend php artisan migrate:rollback --path=$platformAssetsMigration --force --no-interaction
+    Invoke-Compose exec -T backend php artisan migrate:rollback --path=$platformVisualIdentityMigration --force --no-interaction
     Invoke-Compose exec -T backend php artisan migrate:rollback --path=$applicationDossierMigration --force --no-interaction
     Invoke-Compose exec -T backend php artisan migrate:rollback --path=$guidedOnboardingMigration --force --no-interaction
     Invoke-Compose exec -T backend php artisan migrate:rollback --path=$platformSettingsMigration --force --no-interaction
@@ -866,6 +870,8 @@ VALUES (
         '-c', "UPDATE users SET profile_revision = 1 WHERE id = '$draftAdoptionUserId';"
     )
     Invoke-Compose exec -T backend php artisan migrate --path=$applicationDossierMigration --force --no-interaction
+    Invoke-Compose exec -T backend php artisan migrate --path=$platformVisualIdentityMigration --force --no-interaction
+    Invoke-Compose exec -T backend php artisan migrate --path=$platformAssetsMigration --force --no-interaction
     $adoptionResult = (Get-ComposeOutput -Arguments @(
         'exec', '-T', 'db', 'psql', '-U', $env:POSTGRES_USER, '-d', $env:POSTGRES_DB,
         '-tAc', "SELECT t.provisioning_status || ':' || r.schema_origin FROM tenants t JOIN provisioning_runs r ON r.tenant_id = t.id WHERE t.id = '$adoptionTenantId';"

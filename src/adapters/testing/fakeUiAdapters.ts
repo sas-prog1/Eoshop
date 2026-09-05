@@ -23,6 +23,7 @@ export function createFakeUiAdapters(overrides: AdapterOverrides = {}): UiAdapte
     administration: {
       getPlatformSettings: async () => unexpected("administration.getPlatformSettings"),
       updatePlatformSettings: async () => unexpected("administration.updatePlatformSettings"),
+      uploadPlatformAsset: async () => unexpected("administration.uploadPlatformAsset"),
       overview: async () => unexpected("administration.overview"),
       listStores: async () => unexpected("administration.listStores"),
       getStore: async () => unexpected("administration.getStore"),

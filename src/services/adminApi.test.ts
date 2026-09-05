@@ -119,6 +119,28 @@ const storeDetail = {
 };
 
 describe("adminApi", () => {
+  it("uploads a platform identity asset as multipart with one idempotency key", async () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    const key = "22222222-2222-4222-8222-222222222222";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ csrf_token: "platform-asset-csrf" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: {
+        id, url: `/api/platform-assets/${id}`, purpose: "landing_hero", mimeType: "image/webp",
+        byteSize: 1024, width: 1200, height: 675, disk: "private",
+      } }), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("crypto", { randomUUID: () => key });
+
+    const result = await adminApi.uploadPlatformAsset("landing_hero", new File(["image"], "hero.webp", { type: "image/webp" }));
+    const request = fetchMock.mock.calls[1][1] as RequestInit;
+    const body = request.body as FormData;
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/admin/platform-assets");
+    expect(request.headers).toMatchObject({ "Idempotency-Key": key, "X-CSRF-TOKEN": "platform-asset-csrf" });
+    expect(body.get("purpose")).toBe("landing_hero");
+    expect(body.get("image")).toBeInstanceOf(File);
+    expect(result).toEqual({ id, url: `/api/platform-assets/${id}`, purpose: "landing_hero", mimeType: "image/webp", byteSize: 1024, width: 1200, height: 675 });
+    expect(result).not.toHaveProperty("disk");
+  });
   it("loads authoritative platform stores with same-origin credentials", async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({
       data: [{ ...store, databasePassword: "must-not-escape" }],

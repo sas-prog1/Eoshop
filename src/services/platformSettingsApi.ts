@@ -9,6 +9,7 @@ import {
   stringField,
 } from "./apiContract";
 import { isSafePlatformLogoUrl } from "../utils/platformLogoUrl";
+import { isSafePlatformIdentityImageUrl } from "../utils/platformIdentityImageUrl";
 
 export type PlatformNavigationKey = "templates" | "how_it_works" | "pricing";
 export type PlatformBrandFont = "Cairo" | "Tajawal" | "IBM Plex Sans Arabic";
@@ -93,7 +94,7 @@ export function mapPlatformSettings(value: unknown): PlatformSettings {
   }
   const landingHeroImageUrl = nullableStringField(dto, "landingHeroImageUrl", "إعدادات المنصة العامة");
   const authImageUrl = nullableStringField(dto, "authImageUrl", "إعدادات المنصة العامة");
-  if (!isSafePlatformLogoUrl(landingHeroImageUrl) || !isSafePlatformLogoUrl(authImageUrl)) {
+  if (!isSafePlatformIdentityImageUrl(landingHeroImageUrl) || !isSafePlatformIdentityImageUrl(authImageUrl)) {
     throw new Error("استجابة الخادم تحتوي رابط صورة هوية غير آمن.");
   }
   const navigationItems = arrayField(dto, "navigationItems", "إعدادات المنصة العامة")

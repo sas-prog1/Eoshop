@@ -41,6 +41,7 @@
 - [WP 5.27.3A — Storefront navigation and checkout launch review](work-packages/WP-5.27.3A-storefront-launch-review.md)
 - [WP 5.27.3B — Elegant customization review](work-packages/WP-5.27.3B-elegant-customization-review.md)
 - [WP 5.27.3C — Tech Bento merchant customization closure](work-packages/WP-5.27.3C-tech-bento-customization.md)
+- [WP 5.27.5B — Platform identity managed assets](work-packages/WP-5.27.5B-platform-identity-managed-assets.md)
 
 ## Architecture decisions
 
@@ -66,6 +67,7 @@
 - [ADR 0035 — Server-owned store application dossier](decisions/ADR-0035-server-owned-store-application-dossier.md)
 - [ADR 0039 — Server-owned storefront marketing blocks](decisions/ADR-0039-server-owned-storefront-marketing-blocks.md)
 - [ADR 0040 — Elegant editorial stories and discovery images](decisions/ADR-0040-elegant-editorial-stories-and-discovery.md)
+- [ADR 0041 — Platform identity managed assets](decisions/ADR-0041-platform-identity-managed-assets.md)
 
 ## Evidence
 

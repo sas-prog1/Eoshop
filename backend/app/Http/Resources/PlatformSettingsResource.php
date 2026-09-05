@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\PlatformSetting;
+use App\Support\PlatformIdentityImageUrl;
 use App\Support\PlatformLogoUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -30,8 +31,8 @@ class PlatformSettingsResource extends JsonResource
             'brandAccentColor' => $this->brand_accent_color,
             'brandSurfaceColor' => $this->brand_surface_color,
             'brandFontFamily' => $this->brand_font_family,
-            'landingHeroImageUrl' => is_string($this->landing_hero_image_url) && PlatformLogoUrl::accepts($this->landing_hero_image_url) ? $this->landing_hero_image_url : null,
-            'authImageUrl' => is_string($this->auth_image_url) && PlatformLogoUrl::accepts($this->auth_image_url) ? $this->auth_image_url : null,
+            'landingHeroImageUrl' => is_string($this->landing_hero_image_url) && PlatformIdentityImageUrl::accepts($this->landing_hero_image_url) ? $this->landing_hero_image_url : null,
+            'authImageUrl' => is_string($this->auth_image_url) && PlatformIdentityImageUrl::accepts($this->auth_image_url) ? $this->auth_image_url : null,
             'landingHeadline' => $this->landing_headline,
             'landingDescription' => $this->landing_description,
             'announcementEnabled' => (bool) $this->announcement_enabled,

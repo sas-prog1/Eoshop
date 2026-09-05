@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\PlatformAssetConflict;
 use App\Exceptions\PlatformSettingsConflict;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdatePlatformSettingsRequest;
@@ -34,7 +35,7 @@ class PlatformSettingsController extends Controller
         $actor = $request->user();
         try {
             $setting = $settings->update($request->validated(), $actor, $request);
-        } catch (PlatformSettingsConflict $exception) {
+        } catch (PlatformSettingsConflict|PlatformAssetConflict $exception) {
             return response()->json([
                 'message' => $exception->getMessage(),
                 'code' => $exception->errorCode,

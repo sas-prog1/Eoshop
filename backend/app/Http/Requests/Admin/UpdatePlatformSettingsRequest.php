@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\PermissionKey;
+use App\Support\PlatformIdentityImageUrl;
 use App\Support\PlatformLogoUrl;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -101,10 +102,14 @@ class UpdatePlatformSettingsRequest extends FormRequest
                     $validator->errors()->add("navigationItems.{$index}", 'The navigation item contains unsupported fields.');
                 }
             }
-            foreach (['logoUrl', 'landingHeroImageUrl', 'authImageUrl'] as $field) {
+            $logoUrl = $this->input('logoUrl');
+            if (($logoUrl === null || is_string($logoUrl)) && ! PlatformLogoUrl::accepts($logoUrl)) {
+                $validator->errors()->add('logoUrl', 'The platform logo URL must be a safe external HTTPS URL.');
+            }
+            foreach (['landingHeroImageUrl', 'authImageUrl'] as $field) {
                 $url = $this->input($field);
-                if (($url === null || is_string($url)) && ! PlatformLogoUrl::accepts($url)) {
-                    $validator->errors()->add($field, 'The platform image URL must be a safe external HTTPS URL.');
+                if (($url === null || is_string($url)) && ! PlatformIdentityImageUrl::accepts($url)) {
+                    $validator->errors()->add($field, 'The platform identity image must be a managed platform asset or safe external HTTPS URL.');
                 }
             }
             $items = collect((array) $this->input('navigationItems', []))->keyBy('key');

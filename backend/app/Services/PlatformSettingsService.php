@@ -15,7 +15,10 @@ use RuntimeException;
 
 class PlatformSettingsService
 {
-    public function __construct(private readonly AdminAuditService $audit) {}
+    public function __construct(
+        private readonly AdminAuditService $audit,
+        private readonly PlatformAssetService $assets,
+    ) {}
 
     public function current(): PlatformSetting
     {
@@ -59,6 +62,13 @@ class PlatformSettingsService
             if ($current === $desired) {
                 return $setting;
             }
+
+            $this->assets->syncReferences(
+                $current['landingHeroImageUrl'],
+                $current['authImageUrl'],
+                $desired['landingHeroImageUrl'],
+                $desired['authImageUrl'],
+            );
 
             $setting->fill([
                 'revision' => (int) $setting->revision + 1,
