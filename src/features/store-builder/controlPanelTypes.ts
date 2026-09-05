@@ -29,6 +29,8 @@ export interface ControlPanelProps {
   onOpenInventory?: () => void;
   onOpenDomainModal?: () => void;
   onCompleteCustomization?: () => void | Promise<void>;
+  completionDisabled?: boolean;
+  completionLoading?: boolean;
 }
 
 export interface CopywriterOutput {

@@ -19,7 +19,7 @@ export default function AiCopywriterPanel({ prompt, loading, output, onPromptCha
           <span>مساعد المحتوى والكتابة الإبداعية</span>
         </h4>
         <p className="text-[11px] text-sky-600 leading-relaxed">
-          هل تواجه صعوبة في كتابة شعارات تسويقية أو عروض إعلانية جذابة؟ اكتب فكرتك أو المنتج، وسيقوم مساعدنا الذكي باقتراح أفكار فورية لتستعملها فوراً!
+          اكتب اسم المنتج أو فكرته لنقترح عبارة تعريفية ونص إعلان ووصفًا مختصرًا.
         </p>
       </div>
 
@@ -37,16 +37,16 @@ export default function AiCopywriterPanel({ prompt, loading, output, onPromptCha
         <button
           type="submit"
           disabled={loading || !prompt.trim()}
-          className="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black py-3 min-h-[44px] rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-2xs cursor-pointer touch-manipulation disabled:opacity-50"
+          className="flex min-h-[44px] w-full cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-xl bg-sky-700 py-3 text-xs font-black text-white shadow-2xs transition hover:bg-sky-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>جاري تفعيل الإبداع...</span>
+              <span>جارٍ إنشاء المقترحات…</span>
             </>
           ) : (
             <>
-              <span>اقترح لي نصوصاً إبداعية ✨</span>
+              <span>إنشاء مقترحات</span>
               <Sparkles className="w-3.5 h-3.5" />
             </>
           )}
@@ -56,19 +56,19 @@ export default function AiCopywriterPanel({ prompt, loading, output, onPromptCha
       {output && (
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4 text-xs animate-fadeIn">
           <div className="space-y-1">
-            <span className="font-extrabold text-[10px] text-sky-600 uppercase block">اقتراح الشعار (Slogan):</span>
+            <span className="font-extrabold text-[10px] text-sky-700 block">عبارة تعريفية مقترحة</span>
             <p className="text-slate-800 bg-white p-2.5 rounded-lg border border-slate-100 font-semibold leading-relaxed">"{output.slogan}"</p>
           </div>
           <div className="space-y-1">
-            <span className="font-extrabold text-[10px] text-sky-600 uppercase block">عرض ترويجي للإعلان:</span>
+            <span className="font-extrabold text-[10px] text-sky-700 block">نص إعلان مقترح</span>
             <p className="text-slate-800 bg-white p-2.5 rounded-lg border border-slate-100 leading-relaxed">"{output.banner}"</p>
           </div>
           <div className="space-y-1">
-            <span className="font-extrabold text-[10px] text-sky-600 uppercase block">وصف تسويقي للمنتج الأول:</span>
+            <span className="font-extrabold text-[10px] text-sky-700 block">وصف مقترح للمنتج الأول</span>
             <p className="text-slate-800 bg-white p-2.5 rounded-lg border border-slate-100 leading-relaxed text-[11px]">"{output.productDesc}"</p>
           </div>
           <p className="text-[10px] text-slate-400 text-center">
-            * انسخ أي نص وألصقه في علامات تبويب "معلومات المتجر" أو "المنتجات" لتراه يظهر فوراً!
+            انسخ المقترح إلى الحقل المناسب، ثم راجعه في المعاينة.
           </p>
         </div>
       )}

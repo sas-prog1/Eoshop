@@ -3,9 +3,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Store, Package, Sparkles, Smartphone, Monitor,
   ArrowRight, ArrowLeft, Plus, Trash2, Check, ShoppingBag, 
-  X, ExternalLink, Save, RefreshCw, Eye, Code, Phone, Info,
-  ShieldCheck, LogOut, FileCheck, Sliders, Users, Settings,
-  CheckCircle2
+  X, ExternalLink, Save, RefreshCw, Eye, Phone, Info,
+  ShieldCheck, LogOut, FileCheck, Sliders, Users, Settings
 } from "lucide-react";
 
 import { Product, StoreConfig, ELEGANT_PRESET, TECH_PRESET } from "./types";
@@ -74,6 +73,21 @@ import { refreshMerchantLifecycleSnapshot } from "./workflows/merchantLifecycleR
 import { coordinateCustomizationCompletion } from "./workflows/customizationCompletion";
 import { loadPublicStorefrontWithRecovery, publicStorefrontFailureMessage } from "./workflows/publicStorefrontRecovery";
 import { randomUuid } from "./utils/randomUuid";
+
+const BUILDER_TABS: Array<{
+  id: ControlTab;
+  label: string;
+  description: string;
+  icon: typeof Store;
+}> = [
+  { id: "branding", label: "معلومات المتجر", description: "الاسم والشعار وبيانات التواصل", icon: Store },
+  { id: "design", label: "المظهر", description: "الألوان والواجهة والأقسام", icon: Sliders },
+  { id: "products", label: "المنتجات", description: "الكتالوج والصور والأسعار", icon: Package },
+  { id: "checkout", label: "الدفع والتوصيل", description: "خيارات الطلب والشحن والدفع", icon: ShoppingBag },
+  { id: "pages", label: "الصفحات", description: "عن المتجر والتواصل", icon: FileCheck },
+  { id: "ai", label: "مساعد المحتوى", description: "اقتراح نصوص للمتجر", icon: Sparkles },
+  { id: "export", label: "النشر", description: "مراجعة الجاهزية والنشر", icon: ShieldCheck },
+];
 
 export default function App() {
   const {
@@ -253,8 +267,44 @@ export default function App() {
   
   // Full screen preview modal & domain setup modal
   const [showFullScreenPreview, setShowFullScreenPreview] = useState(false);
+  const fullScreenPreviewDialogRef = useRef<HTMLDivElement | null>(null);
+  const fullScreenPreviewCloseRef = useRef<HTMLButtonElement | null>(null);
+  const fullScreenPreviewReturnFocusRef = useRef<HTMLElement | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!showFullScreenPreview) return;
+    fullScreenPreviewReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusTimer = window.setTimeout(() => fullScreenPreviewCloseRef.current?.focus(), 0);
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setShowFullScreenPreview(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = fullScreenPreviewDialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleDialogKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener("keydown", handleDialogKeyDown);
+      fullScreenPreviewReturnFocusRef.current?.focus();
+    };
+  }, [showFullScreenPreview]);
 
   // Local storage persists only store drafts. Authentication is restored from Laravel's session.
   useEffect(() => {
@@ -758,7 +808,7 @@ export default function App() {
         localStorage.removeItem("mobtaker_custom_store");
         setLocalDraft(null);
       }
-      triggerToast("تم حفظ إعدادات المتجر والمنتجات في الخادم بنجاح. 💾", "success");
+      triggerToast("تم حفظ تغييرات المتجر.", "success");
       return true;
     } catch (requestError) {
       if (operation !== workspaceOperationSequence.current) return false;
@@ -807,7 +857,7 @@ export default function App() {
     setCart([]);
     setSelectedCategory("الكل");
     setIsResetConfirmOpen(false);
-    triggerToast("تمت إعادة التعيين بنجاح 🔄", "info");
+    triggerToast("تمت استعادة الإعدادات الافتراضية.", "info");
   };
 
   // Handle template selection
@@ -843,7 +893,7 @@ export default function App() {
     setView("landing");
     replaceCentralPath("/");
     setIsLogoutConfirmOpen(false);
-    triggerToast("تم تسجيل الخروج وإنهاء جلسة الحساب بنجاح 🛡️", "info");
+    triggerToast("تم تسجيل الخروج.", "info");
   };
 
   const handleMerchantSessionExpired = () => {
@@ -864,7 +914,7 @@ export default function App() {
     const startingOperation = workspaceOperationSequence.current;
     const startingEditGeneration = workspaceEditGeneration.current;
     setIsAiGenerating(true);
-    triggerToast("جاري صياغة الفكرة وتصميم الهوية بالذكاء الاصطناعي... 🧠⚡", "info");
+    triggerToast("جارٍ إنشاء مقترحات للهوية والمحتوى…", "info");
 
     try {
       const generatedData = await assistant.generateStoreIdeas(promptText);
@@ -910,7 +960,7 @@ export default function App() {
       setSelectedCategory("الكل");
       setView("builder");
       if (!shouldClaimAiSave(saved)) return;
-      triggerToast("نجاح! تم توليد المتجر والمنتجات والألوان بالكامل بالذكاء الاصطناعي 🚀🎉", "success");
+      triggerToast("تم إنشاء إعدادات المتجر والمنتجات وحفظها. راجعها قبل النشر.", "success");
     } catch (err: any) {
       console.error(err);
       triggerToast(err.message || "عذراً، حدث خطأ أثناء التوليد. يرجى المحاولة مرة أخرى.", "error");
@@ -1017,7 +1067,7 @@ export default function App() {
         products: [newProduct, ...prev.products]
       }));
     setSelectedCategory("الكل");
-    triggerToast("تمت إضافة المنتج بنجاح في أعلى القائمة! تم فتح شاشة التعديل الخاصة به مباشرة 📦", "success");
+    triggerToast("أُضيف منتج جديد وفتحت تفاصيله للتعديل.", "success");
   };
 
   const deleteProduct = (id: string) => {
@@ -1109,7 +1159,7 @@ export default function App() {
       }
     }
     setStorePreviewPageOverride("checkout");
-    triggerToast("تم فتح نافذة المعاينة المباشرة لصفحة الشراء والدفع! 💳", "success");
+    triggerToast("فُتحت معاينة صفحة الدفع والتوصيل.", "success");
   };
 
   const discardRecoverableWorkspace = () => {
@@ -1344,13 +1394,28 @@ export default function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [adminSection, adminStoreId, authUser, isAdminOpen, merchantStores, activeWorkspace, merchantStoreRoute, recoverableWorkspaceChanges, view]);
 
-  const focusedBuilderTask = activeWorkspace && merchantStoreRoute
-    ? ({
-      design: ["ملف المتجر والهوية", "عدّل البيانات والمظهر ثم احفظ التغييرات من الأعلى."],
-      checkout: ["الدفع وسياسة الطلب", "اضبط الشحن والضرائب ووسائل الدفع الحقيقية ثم اختبر المعاينة."],
-      pages: ["المحتوى والتواصل", "حرر نبذة المتجر ووجهات التواصل المحفوظة دون وعود أو نماذج وهمية."],
-    } as const)[merchantStoreRoute.section as "design" | "checkout" | "pages"] ?? null
-    : null;
+  const workspaceSyncState = workspaceConflict
+    ? { label: "تعارض يحتاج قرارًا", className: "bg-rose-100 text-rose-800" }
+    : workspaceSaving
+      ? { label: "جارٍ الحفظ…", className: "bg-sky-100 text-sky-800" }
+      : workspaceLoading
+        ? { label: "جارٍ جلب البيانات…", className: "bg-slate-200 text-slate-700" }
+        : recoverableWorkspaceChanges
+          ? { label: "تعديلات غير محفوظة", className: "bg-amber-100 text-amber-800" }
+          : { label: "محفوظ", className: "bg-emerald-100 text-emerald-800" };
+
+  const handleBuilderTabChange = (tab: ControlTab) => {
+    setActiveTab(tab);
+    if (!activeWorkspace) return;
+    const section = tab === "branding" || tab === "design"
+      ? "design"
+      : tab === "checkout" || tab === "pages"
+        ? tab
+        : null;
+    if (!section || merchantStoreRoute?.section === section) return;
+    setMerchantStoreRoute({ tenantId: activeWorkspace.tenantId, section });
+    replaceCentralPath(merchantStorePath(activeWorkspace.tenantId, section));
+  };
 
   const visiblePlatformNavigation = platformSettings.navigationItems
     .filter((item) => item.isVisible)
@@ -1794,222 +1859,187 @@ export default function App() {
       {view === "builder" && (
         <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden">
           {/* Sub Header for controls */}
-          <header className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 shadow-sm">
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={activeWorkspace || activeDraft?.tenantId ? openMerchantPortal : () => setView("templates")}
-                className="p-2 hover:bg-slate-100 rounded-lg transition text-slate-500"
-                title={activeWorkspace || activeDraft?.tenantId ? "الرجوع إلى بوابة التاجر" : "الرجوع للقوالب"}
-              >
-                <ArrowRight className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                  <span>لوحة تعديل متجر:</span>
-                  <span className="text-sky-600 bg-sky-50 px-3 py-1 rounded-full text-xs font-bold border border-sky-100">
-                    {config.storeName}
-                  </span>
-                </h1>
-                <p className="text-xs text-slate-400">خصص المحتوى والهوية البصرية ثم عاين التغييرات الحية بالجانب المقابل.</p>
-              </div>
-            </div>
-
-            {/* Merchant Badge */}
-            {activeWorkspace && (
-              <div className="flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-900">
-                {merchantStores.filter((store) => store.verificationStatus === "approved" && store.provisioningStatus === "active").length > 1 && (
-                  <label className="flex items-center gap-2">
-                    <span>المتجر:</span>
-                    <select
-                      value={activeWorkspace.tenantId}
-                      disabled={workspaceLoading || workspaceSaving}
-                      onChange={(event) => void selectMerchantStore(event.target.value)}
-                      className="rounded-lg border border-sky-200 bg-white px-2 py-1 disabled:opacity-50"
-                    >
-                      {merchantStores
-                        .filter((store) => store.verificationStatus === "approved" && store.provisioningStatus === "active")
-                        .map((store) => <option key={store.id} value={store.id}>{store.storeName}</option>)}
-                    </select>
-                  </label>
-                )}
+          <header className="shrink-0 border-b border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
                 <button
                   type="button"
-                  disabled={workspaceLoading || workspaceSaving}
-                  onClick={() => void reloadActiveWorkspace(false)}
-                  className="flex items-center gap-1 rounded-lg border border-sky-200 bg-white px-2 py-1 disabled:opacity-50"
+                  onClick={activeWorkspace || activeDraft?.tenantId ? openMerchantPortal : () => setView("templates")}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800"
+                  title={activeWorkspace || activeDraft?.tenantId ? "الرجوع إلى بوابة التاجر" : "الرجوع للقوالب"}
+                  aria-label={activeWorkspace || activeDraft?.tenantId ? "الرجوع إلى بوابة التاجر" : "الرجوع إلى القوالب"}
                 >
-                  <RefreshCw className={`h-3.5 w-3.5 ${workspaceLoading ? "animate-spin" : ""}`} />
-                  أحدث نسخة
+                  <ArrowRight className="h-5 w-5" />
                 </button>
-                {recoverableWorkspaceChanges && <span className="text-amber-700">تعديلات أو تعارضات غير محفوظة</span>}
-              </div>
-            )}
-            {registeredUser && (
-              <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl text-emerald-800 text-xs font-bold shadow-sm select-none">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <div className="text-right">
-                  <span className="block text-slate-800 font-extrabold text-[11px]">{registeredUser.fullName} (مالك المتجر)</span>
-                  <span className="text-[9px] text-emerald-600 block -mt-0.5 font-normal">
-                    {registeredUser.socialPageUrl ? `الصفحة: ${registeredUser.socialPageUrl}` : "بريف متقدم بدون سجل تجاري"}
-                  </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-black tracking-wide text-sky-700">مساحة إعداد المتجر</p>
+                  <h1 className="flex min-w-0 items-baseline gap-2 text-lg font-black text-slate-950 sm:text-xl">
+                    <span className="shrink-0">تهيئة متجري</span>
+                    <span className="truncate text-sm font-extrabold text-slate-500">{config.storeName}</span>
+                  </h1>
+                  <p className="hidden text-xs font-medium text-slate-500 sm:block">عدّل المحتوى والمظهر، ثم راجع النتيجة مباشرة في المعاينة.</p>
                 </div>
-                <button 
-                  onClick={handleLogout}
-                  className="mr-2 bg-rose-50 hover:bg-rose-100 text-rose-700 px-2 py-1 rounded-lg transition text-[10px] font-bold border border-rose-200 flex items-center gap-1 disabled:opacity-50"
-                  title="تسجيل الخروج وإلغاء توثيق النشاط"
-                >
-                  <LogOut className="w-3 h-3 text-rose-500" />
-                  <span>خروج</span>
-                </button>
               </div>
-            )}
 
-            {/* Quick Actions (Finished Customization, Save, Reset, Export, Fullscreen) */}
-            <div className="flex items-center flex-wrap gap-2">
-              <button
-                disabled={workspaceSaving || workspaceLoading || workspaceConflict !== null}
-                onClick={() => void completeStoreCustomization()}
-                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 shadow-md hover:shadow-emerald-600/30 transition transform active:scale-95 cursor-pointer ring-2 ring-emerald-400/30"
-                title="إنهاء التخصيص واختيار الدومين والاستضافة لمتجرك"
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                <span>{activeWorkspace ? "حفظ والعودة إلى بوابة التاجر" : "الانتهاء واختيار عنوان المتجر 🚀"}</span>
-              </button>
+              <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center">
+                {/* Merchant and workspace context */}
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  {activeWorkspace && (
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-bold text-slate-700">
+                      {merchantStores.filter((store) => store.verificationStatus === "approved" && store.provisioningStatus === "active").length > 1 && (
+                        <label className="flex items-center gap-2">
+                          <span>المتجر:</span>
+                          <select
+                            value={activeWorkspace.tenantId}
+                            disabled={workspaceLoading || workspaceSaving}
+                            onChange={(event) => void selectMerchantStore(event.target.value)}
+                            className="rounded-lg border border-sky-200 bg-white px-2 py-1 disabled:opacity-50"
+                          >
+                            {merchantStores
+                              .filter((store) => store.verificationStatus === "approved" && store.provisioningStatus === "active")
+                              .map((store) => <option key={store.id} value={store.id}>{store.storeName}</option>)}
+                          </select>
+                        </label>
+                      )}
+                      <button
+                        type="button"
+                        disabled={workspaceLoading || workspaceSaving}
+                        onClick={() => void reloadActiveWorkspace(false)}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-slate-600 transition hover:bg-white hover:text-sky-800 disabled:opacity-50"
+                        title="جلب أحدث نسخة محفوظة من الخادم"
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 ${workspaceLoading ? "animate-spin" : ""}`} />
+                        جلب الأحدث
+                      </button>
+                      <span className={`rounded-full px-2 py-1 text-[10px] font-black ${workspaceSyncState.className}`}>
+                        {workspaceSyncState.label}
+                      </span>
+                    </div>
+                  )}
+                  {registeredUser && (
+                    <div className="hidden min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700 select-none xl:flex">
+                      <ShieldCheck className="h-4 w-4 shrink-0 text-sky-700" />
+                      <div className="min-w-0 text-right">
+                        <span className="block max-w-40 truncate text-[11px] font-extrabold text-slate-800">{registeredUser.fullName}</span>
+                        <span className="block text-[9px] font-medium text-slate-500">مالك المتجر</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="mr-1 grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-700"
+                        title="تسجيل الخروج"
+                        aria-label="تسجيل الخروج"
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  {registeredUser && (
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 xl:hidden"
+                      title="تسجيل الخروج"
+                      aria-label="تسجيل الخروج"
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
 
-              <button
-                data-testid="save-workspace"
-                disabled={workspaceSaving || workspaceLoading || workspaceConflict !== null}
-                onClick={() => void saveStore()}
-                className="bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer"
-                title={activeWorkspace ? "حفظ الإعدادات والمنتجات في الخادم" : "حفظ مسودة غير منشورة في الخادم"}
-              >
-                <Save className="w-4 h-4 text-emerald-600" />
-                <span>حفظ التعديلات</span>
-              </button>
+                {/* Primary editing actions */}
+                <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-slate-100 pt-2 lg:border-r lg:border-t-0 lg:pr-3 lg:pt-0">
+                  <button
+                    type="button"
+                    data-testid="save-workspace"
+                    disabled={workspaceSaving || workspaceLoading || workspaceConflict !== null}
+                    onClick={() => void saveStore()}
+                    className="flex min-h-10 items-center gap-1.5 rounded-xl bg-sky-700 px-4 py-2 text-xs font-black text-white shadow-sm transition hover:bg-sky-800 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                    title={activeWorkspace ? "حفظ الإعدادات والمنتجات في الخادم" : "حفظ مسودة غير منشورة في الخادم"}
+                  >
+                    <Save className="h-4 w-4" />
+                    <span>{workspaceSaving ? "جارٍ الحفظ…" : "حفظ التعديلات"}</span>
+                  </button>
 
-              <button
-                onClick={resetStore}
-                className="bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5"
-                title="إعادة التعيين للإعدادات الافتراضية"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>إعادة ضبط</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                    className={`flex min-h-10 items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold transition ${
+                      isSidebarCollapsed
+                        ? "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+                    }`}
+                    title={isSidebarCollapsed ? "إظهار أدوات التعديل" : "إخفاء أدوات التعديل وتوسيع المعاينة"}
+                  >
+                    {isSidebarCollapsed ? (
+                      <>
+                        <Sliders className="h-3.5 w-3.5" />
+                        <span>إظهار الأدوات</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">توسيع المعاينة</span>
+                      </>
+                    )}
+                  </button>
 
+                  <button
+                    type="button"
+                    onClick={() => setShowFullScreenPreview(true)}
+                    className="flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-900"
+                    title="فتح معاينة مكبّرة للمتجر"
+                  >
+                    <Monitor className="h-4 w-4" />
+                    <span className="hidden sm:inline">معاينة مكبّرة</span>
+                  </button>
 
-
-              <button
-                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                  isSidebarCollapsed 
-                    ? "bg-sky-600 hover:bg-sky-700 text-white shadow" 
-                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
-                }`}
-                title={isSidebarCollapsed ? "إظهار لوحة التعديل الجانبية" : "إخفاء لوحة التعديل لمعاينة المتجر كزبون حقيقي بملء الشاشة"}
-              >
-                {isSidebarCollapsed ? (
-                  <>
-                    <Sliders className="w-3.5 h-3.5 text-white" />
-                    <span>إظهار التعديل ⚙️</span>
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-3.5 h-3.5 text-slate-500" />
-                    <span>وضع العميل (كامل الشاشة) 👁️</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                onClick={() => setShowFullScreenPreview(true)}
-                className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md"
-                title="رؤية كشاشة كاملة مستقلة"
-              >
-                <Eye className="w-4 h-4" />
-                <span>شاشة كاملة</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={resetStore}
+                    className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                    title="استعادة الإعدادات الافتراضية"
+                    aria-label="استعادة الإعدادات الافتراضية"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
           </header>
 
           {/* Builder Workplace (Two Columns: controls & preview) */}
-          <div className="flex-1 flex flex-col lg:flex-row min-h-0 bg-slate-100 overflow-hidden h-full">
+          <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto bg-slate-100 lg:flex-row lg:overflow-hidden">
             {/* COLUMN 1: CONTROLS PANEL */}
             {!isSidebarCollapsed && (
-              <aside className="w-full lg:w-[460px] h-[50vh] lg:h-full flex flex-col border-l border-slate-200 bg-white shrink-0 animate-fadeIn min-h-0 overflow-hidden shadow-xs">
+              <aside className="flex h-[62vh] min-h-[440px] w-full shrink-0 animate-fadeIn flex-col overflow-hidden border-l border-slate-200 bg-white shadow-xs lg:h-full lg:min-h-0 lg:w-[460px]">
                 {/* Tab navigation headers with mobile touch scroll */}
-                <div className="flex items-center overflow-x-auto border-b border-slate-200 shrink-0 bg-slate-50/80 text-xs divide-x divide-x-reverse divide-slate-200/80 scrollbar-none touch-pan-x">
-                  {focusedBuilderTask ? (
-                    <div className="flex min-h-[48px] w-full items-center justify-between gap-3 bg-white px-4 py-3">
-                      <div>
-                        <p className="text-sm font-black text-slate-900">{focusedBuilderTask[0]}</p>
-                        <p className="mt-0.5 text-[10px] font-bold text-slate-500">{focusedBuilderTask[1]}</p>
-                      </div>
-                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-700">متصل بالخادم</span>
-                    </div>
-                  ) : (<>
-                  <button
-                    onClick={() => setActiveTab("branding")}
-                    className={`py-3.5 px-4 min-h-[44px] font-extrabold text-center border-b-2 transition shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 touch-manipulation cursor-pointer active:scale-[0.98] ${
-                      activeTab === "branding" ? "border-slate-900 text-slate-900 bg-white shadow-2xs" : "border-transparent text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <span>الاسم والشعار</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("design")}
-                    className={`py-3.5 px-4 min-h-[44px] font-extrabold text-center border-b-2 transition shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 touch-manipulation cursor-pointer active:scale-[0.98] ${
-                      activeTab === "design" ? "border-slate-900 text-slate-900 bg-white shadow-2xs" : "border-transparent text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <span>الهوية والألوان 🎨</span>
-                  </button>
-                  <button
-                    data-testid="products-tab"
-                    onClick={() => setActiveTab("products")}
-                    className={`py-3.5 px-4 min-h-[44px] font-extrabold text-center border-b-2 transition shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 touch-manipulation cursor-pointer active:scale-[0.98] ${
-                      activeTab === "products" ? "border-slate-900 text-slate-900 bg-white shadow-2xs" : "border-transparent text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <span>المنتجات المعروضة</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("checkout")}
-                    className={`py-3.5 px-4 min-h-[44px] font-extrabold text-center border-b-2 transition shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 touch-manipulation cursor-pointer active:scale-[0.98] ${
-                      activeTab === "checkout" ? "border-emerald-600 text-emerald-900 bg-emerald-50 shadow-2xs" : "border-transparent text-emerald-800 hover:text-emerald-950 font-black"
-                    }`}
-                  >
-                    <span>الدفع والطلب 💳</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("pages")}
-                    className={`py-3.5 px-4 min-h-[44px] font-extrabold text-center border-b-2 transition shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 touch-manipulation cursor-pointer active:scale-[0.98] ${
-                      activeTab === "pages" ? "border-slate-900 text-slate-900 bg-white shadow-2xs" : "border-transparent text-slate-500 hover:text-slate-700"
-                    }`}
-                  >
-                    <span>تعديل الصفحات 📄</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("ai")}
-                    className={`py-3.5 px-4 min-h-[44px] font-extrabold text-center border-b-2 transition shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 touch-manipulation cursor-pointer active:scale-[0.98] ${
-                      activeTab === "ai" ? "border-slate-900 text-slate-900 bg-white shadow-2xs" : "border-transparent text-slate-500 hover:text-slate-700"
-                    }`}
-                  >
-                    <span>مساعد المحتوى ✨</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("export")}
-                    className={`py-3.5 px-4 min-h-[44px] font-extrabold text-center border-b-2 transition shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 touch-manipulation cursor-pointer active:scale-[0.98] ${
-                      activeTab === "export" ? "border-emerald-600 text-emerald-800 bg-emerald-50 shadow-2xs" : "border-transparent text-emerald-700 hover:text-emerald-900 font-bold"
-                    }`}
-                  >
-                    <span>طلب اعتماد ونشر المتجر 🚀</span>
-                  </button>
-                  </>)}
-                </div>
+                <nav className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-slate-200 bg-slate-50 px-2 py-2 text-xs scrollbar-none touch-pan-x" aria-label="أقسام تهيئة المتجر">
+                  {BUILDER_TABS.map(({ id, label, description, icon: TabIcon }) => (
+                    <button
+                      type="button"
+                      key={id}
+                      data-testid={id === "products" ? "products-tab" : undefined}
+                      onClick={() => handleBuilderTabChange(id)}
+                      aria-pressed={activeTab === id}
+                      title={description}
+                      className={`flex min-h-10 shrink-0 touch-manipulation items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 font-extrabold transition active:scale-[0.98] ${
+                        activeTab === id
+                          ? "bg-slate-950 text-white shadow-sm"
+                          : "text-slate-600 hover:bg-white hover:text-slate-950"
+                      }`}
+                    >
+                      <TabIcon className={`h-3.5 w-3.5 ${activeTab === id ? "text-sky-300" : "text-slate-400"}`} aria-hidden="true" />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </nav>
 
                 {/* Render dynamic ControlPanel with states - Independent Scrolling */}
                 <div
                   aria-disabled={workspaceEditorLocked}
+                  aria-busy={workspaceLoading || workspaceSaving || draftLoading || draftSaving}
+                  inert={workspaceEditorLocked}
                   className={`flex-1 min-h-0 overflow-hidden h-full ${workspaceEditorLocked ? "pointer-events-none opacity-60" : ""}`}
                 >
                   <ControlPanel 
@@ -2023,27 +2053,29 @@ export default function App() {
                     addEmptyProduct={addEmptyProduct}
                     deleteProduct={deleteProduct}
                     activeTab={activeTab}
-                    setActiveTab={setActiveTab}
+                    setActiveTab={handleBuilderTabChange}
                     previewDevice={previewDevice}
                     setPreviewDevice={setPreviewDevice}
                     onOpenInventory={activeWorkspace && canViewInventory ? openInventoryFromBuilder : undefined}
                     onOpenCheckoutPreview={handleOpenCheckoutPreview}
                     onOpenDomainModal={activeWorkspace ? undefined : () => setIsDomainModalOpen(true)}
                     onCompleteCustomization={completeStoreCustomization}
+                    completionDisabled={workspaceEditorLocked}
+                    completionLoading={workspaceSaving || draftSaving}
                   />
                 </div>
               </aside>
             )}
 
             {/* COLUMN 2: SIMULATED PREVIEW STAGE */}
-            <main className={`flex-1 flex items-center justify-center overflow-hidden bg-slate-100 relative transition-all duration-300 min-h-0 h-[55vh] lg:h-full ${
+            <main className={`relative flex h-[60vh] min-h-[420px] shrink-0 flex-1 items-center justify-center overflow-hidden bg-slate-100 transition-all duration-300 lg:h-full lg:min-h-0 lg:shrink ${
               isSidebarCollapsed && previewDevice === "desktop" ? "p-0" : "p-3 lg:p-6"
             }`}>
               {/* Device container wrap */}
               <div 
                 className={`transition-all duration-300 bg-white shadow-2xl relative flex flex-col border border-slate-200 overflow-hidden max-h-full ${
                   previewDevice === "mobile" 
-                    ? "w-[360px] h-[660px] rounded-[3rem] border-[10px] border-[#181d2d] bg-[#181d2d] shrink-0 shadow-2xl ring-1 ring-slate-800" 
+                    ? "h-[660px] w-full max-w-[360px] shrink-0 rounded-[3rem] border-[10px] border-[#181d2d] bg-[#181d2d] shadow-2xl ring-1 ring-slate-800"
                     : isSidebarCollapsed 
                       ? "w-full h-full max-w-full rounded-none border-none shadow-none" 
                       : "w-full h-full max-w-7xl rounded-2xl"
@@ -2089,6 +2121,11 @@ export default function App() {
             className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm p-4 md:p-8 flex items-center justify-center"
           >
             <motion.div
+              ref={fullScreenPreviewDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="full-screen-preview-title"
+              tabIndex={-1}
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
@@ -2097,35 +2134,27 @@ export default function App() {
             >
               {/* Toolbar Header */}
               <div className="bg-slate-100 text-slate-900 border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0 select-none">
-                <div className="flex items-center gap-3">
-                  <div className="bg-amber-100 text-amber-800 p-2 rounded-xl border border-amber-200">
-                    <Store className="w-5 h-5 text-amber-700" />
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="rounded-xl border border-sky-100 bg-sky-50 p-2 text-sky-800">
+                    <Store className="h-5 w-5" />
                   </div>
-                  <div>
-                    <span className="font-extrabold text-sm md:text-base text-slate-900">{config.storeName} (عرض المعاينة الكاملة)</span>
-                    <span className="text-[10px] text-slate-500 font-bold block -mt-0.5">تصميم وحفظ عبر منصة {platformSettings.platformName}</span>
+                  <div className="min-w-0">
+                    <h2 id="full-screen-preview-title" className="truncate text-sm font-extrabold text-slate-900 md:text-base">معاينة متجر {config.storeName}</h2>
+                    <span className="block text-[10px] font-bold text-slate-500">للعرض الآن فقط؛ احفظ التغييرات من محرر المتجر.</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="hidden md:flex bg-white border border-slate-200 px-3 py-1 rounded-full text-xs font-bold text-slate-700 shadow-2xs">
-                    قالب: {config.themeStyle === "elegant" ? "الأناقة والفخامة" : "التكنولوجيا والابتكار"}
+                  <div className="hidden rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-2xs md:flex">
+                    قالب: {config.themeStyle === "elegant" ? "أنيق وهادئ" : "حديث وتقني"}
                   </div>
                   <button
-                    onClick={() => {
-                      const jsonString = JSON.stringify(config, null, 2);
-                      navigator.clipboard.writeText(jsonString);
-                      triggerToast("تم نسخ مواصفات وملف المتجر بصيغة JSON لترسله لأي شخص! 📋", "success");
-                    }}
-                    className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-2xs cursor-pointer touch-manipulation min-h-[38px]"
-                    title="تصدير كود المتجر"
-                  >
-                    <span>تصدير كود JSON 📦</span>
-                  </button>
-                  <button
+                    ref={fullScreenPreviewCloseRef}
+                    type="button"
                     onClick={() => setShowFullScreenPreview(false)}
-                    className="bg-rose-600 hover:bg-rose-700 text-white p-2 rounded-xl transition shadow-2xs cursor-pointer touch-manipulation"
+                    className="cursor-pointer touch-manipulation rounded-xl border border-slate-200 bg-white p-2 text-slate-600 shadow-2xs transition hover:bg-slate-950 hover:text-white"
                     title="إغلاق المعاينة"
+                    aria-label="إغلاق المعاينة"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -2388,7 +2417,7 @@ export default function App() {
             >
               <div className="flex items-center gap-3 mb-4 text-amber-600">
                 <div className="p-2.5 bg-amber-50 rounded-xl">
-                  <RefreshCw className="w-6 h-6 text-amber-600 animate-spin-slow" />
+                  <RefreshCw className="h-6 w-6 text-amber-600" />
                 </div>
                 <h3 className="font-extrabold text-lg text-slate-900">إعادة تعيين المتجر</h3>
               </div>
@@ -2402,11 +2431,11 @@ export default function App() {
                   onClick={() => setIsResetConfirmOpen(false)}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition text-sm font-bold"
                 >
-                  إلغاء التراجع
+                  الاحتفاظ بتعديلاتي
                 </button>
                 <button
                   onClick={executeResetStore}
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl transition text-sm font-bold shadow-lg shadow-amber-600/10"
+                  className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-rose-600/10 transition hover:bg-rose-700"
                 >
                   نعم، إعادة تعيين
                 </button>
